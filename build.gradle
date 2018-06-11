@@ -66,6 +66,7 @@ buildConfig {
     version = project.version
     buildConfigField("String", "ownerId", "191231307290771456")
     buildConfigField("boolean", "UNSTABLE", "false")
+    buildConfigField("String", "datebase", "SQL & Mongo (mixed mode)")
     packageName = project.group
     charset = 'UTF-8'
 
@@ -91,6 +92,9 @@ dependencies {
 
     //Commons text, because UnicodeUnescaper
     compile group: 'org.apache.commons', name: 'commons-text', version: '1.1'
+
+    // MongoDB
+    compile 'org.mongodb:mongodb-driver-async:3.8.0-beta3'
 
     // MySQL
     compile group: 'mysql', name: 'mysql-connector-java', version: '5.1.6'
