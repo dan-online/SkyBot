@@ -25,4 +25,6 @@ public data class AtomicPair<A, B>(private var first: A, private var second: B):
     fun setSecond(second: B) {
         this.second = second
     }
+
+    override fun toString(): String = "${this::class.java.name}: [${first.toString()}, ${second.toString()}]"
 }
