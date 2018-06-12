@@ -46,5 +46,15 @@
   "messages": {
     // The suggest command
     "suggest": "Suggest to the bot here!"
+  },
+  // Leave username and password blank if you use localhost
+  "mongo": {
+    "username": "",
+    "password": "",
+    "host": "localhost",
+    "port": 27017,
+    "database": "dunctebot",
+    "use_srv": false,
+    "enableSSH": false
   }
 }

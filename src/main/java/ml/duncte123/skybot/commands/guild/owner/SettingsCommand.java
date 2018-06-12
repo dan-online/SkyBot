@@ -71,11 +71,11 @@ public class SettingsCommand extends Command {
                         "**Filter Discord invites:** " + boolToEmoji(settings.isFilterInvites()) + "\n" +
                         "**Spamfilter:** " + boolToEmoji(settings.getSpamFilterState()) + "\n" +
                         "**Kick Mode:** " + (settings.getKickState() ? "Kick Members" : "Mute members") + "\n" +
-                        "**MuteRole:** " + (settings.getMuteRoleId() == null || settings.getMuteRoleId().equals("")
+                        "**MuteRole:** " + (settings.getMuteRoleId() == null || settings.getMuteRoleIdLong() == -1
                         ? "Not Set" : guild.getRoleById(settings.getMuteRoleId()).getAsMention()) + "\n" +
                         "**Join message:** " + settings.getCustomJoinMessage() + "\n" +
                         "**Leave message:** " + settings.getCustomLeaveMessage() + "\n" +
-                        "**AutoRole:** " + (settings.getAutoroleRole() == null || settings.getAutoroleRole().equals("")
+                        "**AutoRole:** " + (settings.getAutoroleRole() == null || settings.getAutoroleRoleLong() == -1
                         ? "Not Set" : guild.getRoleById(settings.getAutoroleRole()).getAsMention()) + "\n" +
                         "**Current prefix:** " + settings.getCustomPrefix() + "\n" +
                         "**Modlog Channel:** " + (logChan != null ? logChan.getAsMention() : "none") + "\n" +

@@ -19,7 +19,13 @@
 package ml.duncte123.skybot.utils;
 
 import com.github.natanbc.reliqua.request.PendingRequest;
+import com.mongodb.ConnectionString;
+import com.mongodb.async.client.*;
+import com.mongodb.connection.SslSettings;
+import com.mongodb.connection.netty.NettyStreamFactoryFactory;
 import com.wolfram.alpha.WAEngine;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
 import me.duncte123.botCommons.config.Config;
 import me.duncte123.botCommons.web.WebUtils;
 import me.duncte123.weebJava.WeebApiBuilder;
@@ -30,10 +36,12 @@ import ml.duncte123.skybot.Settings;
 import ml.duncte123.skybot.connections.database.DBManager;
 import ml.duncte123.skybot.objects.discord.user.Profile;
 import ml.duncte123.skybot.objects.guild.GuildSettings;
+import ml.duncte123.skybot.objects.guild.GuildSettingsCodecImpl;
 import net.dv8tion.jda.core.OnlineStatus;
 import net.dv8tion.jda.core.entities.Game;
 import net.dv8tion.jda.core.entities.Guild;
 import net.dv8tion.jda.core.entities.TextChannel;
+import org.bson.codecs.configuration.CodecRegistries;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,7 +52,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.regex.Pattern;
 
-@SuppressWarnings({"ReturnInsideFinallyBlock", "WeakerAccess", "unused"})
+@SuppressWarnings({"ReturnInsideFinallyBlock", "WeakerAccess", "unused", "deprecation"})
 public class AirUtils {
 
 
@@ -52,6 +60,25 @@ public class AirUtils {
     public static final boolean NONE_SQLITE = CONFIG.getBoolean("use_database", false);
     public static final Random RAND = new Random();
     public static final DBManager DB = new DBManager();
+    public static final EventLoopGroup eventLoopGroup = new NioEventLoopGroup();
+    public static final MongoClient MONGO_CLIENT = MongoClients.create(
+            MongoClientSettings.builder()
+                    .streamFactoryFactory(NettyStreamFactoryFactory.builder()
+                            .eventLoopGroup(eventLoopGroup).build())
+                    .sslSettings(SslSettings.builder()
+                            .enabled(true)
+                            .build())
+                    .applyConnectionString(new ConnectionString(
+                            String.format("mongodb%s://%s:%s@%s/?streamType=netty&ssl=true",
+                            (CONFIG.getBoolean("mongo.use_srv")) ? "+srv" : "",
+                            CONFIG.getString("mongo.username"),
+                            CONFIG.getString("mongo.password"),
+                            CONFIG.getString("mongo.host"))))
+                    .build()
+    );
+    public static final MongoDatabase MONGO_DATABASE = MONGO_CLIENT.getDatabase(CONFIG.getString("mongo.database"));
+    public static final MongoCollection<GuildSettings> MONGO_GUILDSETTINGS = MONGO_DATABASE.getCollection("guildsettings", GuildSettings.class)
+            .withCodecRegistry(CodecRegistries.fromCodecs(new GuildSettingsCodecImpl()));
     public static final CommandManager COMMAND_MANAGER = new CommandManager();
     public static final WeebApi WEEB_API = new WeebApiBuilder(TokenType.WOLKETOKENS)
             .setBotInfo("DuncteBot(SkyBot)", Settings.VERSION, "Production")

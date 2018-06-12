@@ -35,7 +35,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.security.auth.login.LoginException;
-import java.sql.Connection;
 
 /**
  * NOTE TO SELF String.format("%#s", userObject)
@@ -71,20 +70,7 @@ public class SkyBot {
 //        Logger l = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
 //        l.setLevel(INFO);
 
-        if (AirUtils.NONE_SQLITE) { //Don't try to connect if we don't want to
-            if (!AirUtils.DB.connManager.hasSettings()) {
-                logger.error("Can't load database settings. ABORTING!!!!!");
-                System.exit(-2);
-            }
-            Connection conn = AirUtils.DB.getConnManager().getConnection();
-            if (!AirUtils.DB.isConnected()) {
-                logger.error("Can't connect to database. ABORTING!!!!!");
-                System.exit(-3);
-            } else {
-                logger.info(TextColor.GREEN + "Successful connection to the database" + TextColor.RESET);
-                conn.close();
-            }
-        } else {
+        if (!AirUtils.NONE_SQLITE) { //Don't try to connect if we don't want to
             int startIn = 5;
             logger.warn("Using SQLite as the database");
             logger.warn("Please note that is is not recommended and can break some features.");

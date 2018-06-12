@@ -169,7 +169,7 @@ class ComparatingUtils {
     }
 
     class ExceptionType(val ex: Throwable, val message: String, val stackTrace: Array<out StackTraceElement>) {
-        constructor(ex: Throwable) : this(ex, ex.localizedMessage, ex.stackTrace)
+        constructor(ex: Throwable) : this(ex, "${ex.localizedMessage}", ex.stackTrace)
 
         var count = 1L
 
