@@ -18,6 +18,7 @@
 
 package ml.duncte123.skybot.utils;
 
+import com.mongodb.MongoCommandException;
 import com.mongodb.async.SingleResultCallback;
 import com.mongodb.async.client.MongoCollection;
 import com.mongodb.client.result.DeleteResult;
@@ -38,8 +39,16 @@ public class GuildSettingsUtils {
 
     private static final Logger logger = LoggerFactory.getLogger(GuildSettingsUtils.class);
     private static final SingleResultCallback<Void> DEFAULT_VOID_CALLBACK = (aVoid, exception) -> {
-        if (exception!= null)
-            exception.printStackTrace();
+        if (exception!= null) {
+            if (exception instanceof MongoCommandException) {
+                MongoCommandException mongoCommandException = (MongoCommandException) exception;
+                if (mongoCommandException.getErrorCode() != 8000) {
+                    mongoCommandException.printStackTrace();
+                }
+            } else {
+                exception.printStackTrace();
+            }
+        }
         else
             logger.info("DB statement performed.");
     };
