@@ -34,7 +34,7 @@ import java.util.Arrays;
 public class GuildSettingsUtils {
 
     private static final Logger logger = LoggerFactory.getLogger(GuildSettingsUtils.class);
-    private static final SingleResultCallback<Void> DEFAULT_VOID_CALLBACK = (aVoid, exception) -> {
+    public static final SingleResultCallback<Void> DEFAULT_VOID_CALLBACK = (aVoid, exception) -> {
         if (exception!= null) {
             if (exception instanceof MongoCommandException) {
                 MongoCommandException mongoCommandException = (MongoCommandException) exception;
@@ -48,7 +48,7 @@ public class GuildSettingsUtils {
         else
             logger.info("DB statement performed.");
     };
-    private static final SingleResultCallback<?> DEFAULT_OBJECT_CALLBACK = (object, exception) -> {
+    public static final SingleResultCallback<?> DEFAULT_OBJECT_CALLBACK = (object, exception) -> {
         if (exception!= null)
             exception.printStackTrace();
         else if (object != null)

@@ -18,28 +18,27 @@
 
 package ml.duncte123.skybot;
 
-import kotlin.Triple;
+import com.mongodb.client.model.Filters;
 import ml.duncte123.skybot.exceptions.VRCubeException;
 import ml.duncte123.skybot.objects.command.Command;
 import ml.duncte123.skybot.objects.command.CommandCategory;
 import ml.duncte123.skybot.objects.command.custom.CustomCommand;
-import ml.duncte123.skybot.objects.command.custom.CustomCommandImpl;
 import ml.duncte123.skybot.unstable.utils.ComparatingUtils;
 import ml.duncte123.skybot.utils.AirUtils;
 import ml.duncte123.skybot.utils.GuildSettingsUtils;
+import ml.duncte123.skybot.utils.MessageUtils;
+import net.dv8tion.jda.core.entities.Message;
 import net.dv8tion.jda.core.events.message.guild.GuildMessageReceivedEvent;
+import org.bson.Document;
 import org.reflections.Reflections;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -51,6 +50,7 @@ public class CommandManager {
      */
     private final Set<Command> commands = ConcurrentHashMap.newKeySet();
     private final Set<CustomCommand> customCommands = ConcurrentHashMap.newKeySet();
+    private final Logger logger = LoggerFactory.getLogger(CommandManager.class);
 
     /**
      * This makes sure that all the commands are added
@@ -102,15 +102,16 @@ public class CommandManager {
                 .filter(c -> c.getName().equalsIgnoreCase(invoke)).findFirst().orElse(null);
     }
 
-    public boolean editCustomCommand(CustomCommand c) {
-        return addCustomCommand(c, true, true).getFirst();
+    public void editCustomCommand(GuildMessageReceivedEvent event, CustomCommand c) {
+        addCustomCommand(event, c, true, true);
     }
 
-    public Triple<Boolean, Boolean, Boolean> addCustomCommand(CustomCommand c) {
-        return addCustomCommand(c, true, false);
+    public void addCustomCommand(GuildMessageReceivedEvent event, CustomCommand c) {
+        addCustomCommand(event, c, true, false);
     }
 
-    public Triple<Boolean, Boolean, Boolean> addCustomCommand(CustomCommand command, boolean insertInDb, boolean isEdit) {
+    public void addCustomCommand(GuildMessageReceivedEvent event, CustomCommand command, boolean insertInDb, boolean isEdit) {
+        Message message = (event == null) ? null : event.getMessage();
         if (command.getName().contains(" ")) {
             throw new VRCubeException("Name can't have spaces!");
         }
@@ -120,50 +121,62 @@ public class CommandManager {
         boolean limitReached = this.customCommands.stream().filter((cmd) -> cmd.getGuildId().equals(command.getGuildId())).count() >= 50 && !isEdit;
 
         if (commandFound || limitReached) {
-            return new Triple<>(false, commandFound, limitReached);
+            if (message != null)
+            MessageUtils.sendErrorWithMessage(message, "Either the command was already added, limit reached or an database " +
+                    "error appeared.\n" +
+                    "Try to contact the developers if you spot an database error.");
         }
+
 
         if (insertInDb) {
-            try {
-                Triple<Boolean, Boolean, Boolean> res = AirUtils.DB.run(() -> {
-                    Connection conn = AirUtils.DB.getConnManager().getConnection();
 
-                    String sqlQuerry = (isEdit) ?
-                            "UPDATE customCommands SET message = ? WHERE guildId = ? AND invoke = ?" :
-                            "INSERT INTO customCommands(guildId, invoke, message) VALUES (? , ? , ?)";
-
-                    try {
-                        PreparedStatement stm = conn.prepareStatement(sqlQuerry);
-                        stm.setString((isEdit) ? 2 : 1, command.getGuildId());
-                        stm.setString((isEdit) ? 3 : 2, command.getName());
-                        stm.setString((isEdit) ? 1 : 3, command.getMessage());
-                        stm.execute();
-                    } catch (SQLException e) {
-                        e.printStackTrace();
-                        return new Triple<>(false, false, false);
-                    } finally {
-                        try {
-                            conn.close();
-                        } catch (SQLException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                    return null;
-                }).get();
-
-                if (res != null && !res.getFirst()) {
-                    return res;
+            AirUtils.MONGO_CLIENT.startSession((session, sessionException) -> {
+                if (sessionException != null) {
+                    logger.error("Aborting! Sessions are denied by the database.", sessionException);
+                    System.exit(-2);
                 }
-            } catch (InterruptedException | ExecutionException e) {
-                e.printStackTrace();
-            }
-        }
-        if (isEdit) {
-            this.customCommands.remove(getCustomCommand(command.getName(), command.getGuildId()));
-        }
-        this.customCommands.add(command);
 
-        return new Triple<>(true, false, false);
+                if (isEdit) {
+                    AirUtils.MONGO_CUSTOMCOMMANDS.updateOne(session,
+                        Filters.and(
+                                Filters.eq("invoke", command.getName()),
+                                Filters.eq("guildId", Long.parseLong(command.getGuildId()))),
+                        new Document("message", command.getMessage()),
+                        (result, exception) -> {
+                            if (exception != null) {
+                                if (message != null)
+                                MessageUtils.sendErrorWithMessage(message, "Either the command was removed or an database error appeared.\n" +
+                                        "Try to contact the developers if you spot an database error.");
+                                exception.printStackTrace();
+                            }
+                            if (result != null) {
+                                this.customCommands.remove(getCustomCommand(command.getName(), command.getGuildId()));
+                                this.customCommands.add(command);
+                                if (message != null)
+                                MessageUtils.sendSuccess(message);
+                            }
+                    });
+                } else {
+                    AirUtils.MONGO_CUSTOMCOMMANDS.insertOne(session, command,
+                        (result, exception) -> {
+                            if (exception != null) {
+                                if (message != null)
+                                MessageUtils.sendErrorWithMessage(message, "Either the command was already added, limit reached or an database " +
+                                        "error appeared.\n" +
+                                        "Try to contact the developers if you spot an database error.");
+                                exception.printStackTrace();
+                            }
+                            if (result != null) {
+                                this.customCommands.add(command);
+                                if (message != null)
+                                MessageUtils.sendSuccess(message);
+                            }
+                        });
+                }
+
+                session.close();
+            });
+        }
     }
 
     /**
@@ -176,39 +189,31 @@ public class CommandManager {
         return commands.remove(getCommand(command));
     }
 
-    public boolean removeCustomCommand(String name, String guildId) {
+    public void removeCustomCommand(GuildMessageReceivedEvent event, String name, String guildId) {
         CustomCommand cmd = getCustomCommand(name, guildId);
-        if (cmd == null)
-            return false;
-
-        try {
-            return AirUtils.DB.run(() -> {
-                Connection con = AirUtils.DB.getConnManager().getConnection();
-
-                try {
-                    PreparedStatement stm = con.prepareStatement("DELETE FROM customCommands WHERE invoke = ? AND guildId = ?");
-                    stm.setString(1, name);
-                    stm.setString(2, guildId);
-                    stm.execute();
-                } catch (SQLException e) {
-                    e.printStackTrace();
-                    return false;
-                } finally {
-                    try {
-                        con.close();
-                    } catch (SQLException e) {
-                        e.printStackTrace();
-                    }
-                }
-
-                this.customCommands.remove(cmd);
-
-                return true;
-            }).get();
-        } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace();
-            return false;
+        final Message message = event.getMessage();
+        if (cmd == null) {
+            MessageUtils.sendErrorWithMessage(message, String.format("The command with name %s does not exist here!", name));
         }
+        AirUtils.MONGO_CLIENT.startSession((session, sessionException) -> {
+            if (sessionException != null) {
+                logger.error("Aborting! Sessions are denied by the database.", sessionException);
+                System.exit(-2);
+            }
+            AirUtils.MONGO_CUSTOMCOMMANDS.deleteOne(session, Filters.and(Filters.eq("invoke", name), Filters.eq("guildId", Long.parseLong
+                    (guildId))), (result, exception) -> {
+                if (exception != null) {
+                    MessageUtils.sendErrorWithMessage(message, "Either the command was removed or an database error appeared.\n" +
+                            "Try to contact the developers if you spot an database error.");
+                    exception.printStackTrace();
+                }
+                if (result != null) {
+                    this.customCommands.remove(cmd);
+                    MessageUtils.sendSuccess(message);
+                }
+            });
+            session.close();
+        });
     }
 
     /**
@@ -283,26 +288,16 @@ public class CommandManager {
     }
 
     private void loadCustomCommands() {
-        AirUtils.DB.run(() -> {
-            Connection con = AirUtils.DB.getConnManager().getConnection();
-            try {
-                ResultSet res = con.createStatement().executeQuery("SELECT * FROM customCommands");
-                while (res.next()) {
-                    addCustomCommand(new CustomCommandImpl(
-                            res.getString("invoke"),
-                            res.getString("message"),
-                            res.getString("guildId")
-                    ), false, false);
-                }
-            } catch (SQLException e) {
-                e.printStackTrace();
-            } finally {
-                try {
-                    con.close();
-                } catch (SQLException e) {
-                    e.printStackTrace();
-                }
+        AirUtils.MONGO_CLIENT.startSession((session, sessionException) -> {
+            if (sessionException != null) {
+                logger.error("Aborting! Sessions are denied by the database.", sessionException);
+                System.exit(-2);
             }
+
+            AirUtils.MONGO_CUSTOMCOMMANDS.find(session)
+                    .forEach((command) -> addCustomCommand(null, command, false, false), GuildSettingsUtils.DEFAULT_VOID_CALLBACK);
+
+            session.close();
         });
     }
 }

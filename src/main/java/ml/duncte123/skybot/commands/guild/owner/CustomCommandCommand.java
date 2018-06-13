@@ -18,7 +18,6 @@
 
 package ml.duncte123.skybot.commands.guild.owner;
 
-import kotlin.Triple;
 import ml.duncte123.skybot.objects.command.Command;
 import ml.duncte123.skybot.objects.command.custom.CustomCommand;
 import ml.duncte123.skybot.objects.command.custom.CustomCommandImpl;
@@ -27,7 +26,6 @@ import ml.duncte123.skybot.utils.AirUtils;
 import ml.duncte123.skybot.utils.MessageUtils;
 import net.dv8tion.jda.core.MessageBuilder;
 import net.dv8tion.jda.core.Permission;
-import net.dv8tion.jda.core.entities.Message;
 import net.dv8tion.jda.core.events.message.guild.GuildMessageReceivedEvent;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
@@ -35,7 +33,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Arrays;
 import java.util.List;
 
-import static ml.duncte123.skybot.utils.MessageUtils.*;
+import static ml.duncte123.skybot.utils.MessageUtils.sendMsg;
 
 public class CustomCommandCommand extends Command {
 
@@ -111,13 +109,7 @@ public class CustomCommandCommand extends Command {
             return;
         }
 
-        boolean success = AirUtils.COMMAND_MANAGER.removeCustomCommand(commandName, guildid);
-        Message msg = event.getMessage();
-        if (!success) {
-            sendErrorWithMessage(msg, "Failed to delete custom command.");
-            return;
-        }
-        sendSuccess(msg);
+        AirUtils.COMMAND_MANAGER.removeCustomCommand(event, commandName, guildid);
     }
 
     private void addOrEditCustomCommand(String[] args, GuildMessageReceivedEvent event) {
@@ -144,39 +136,25 @@ public class CustomCommandCommand extends Command {
             if (!args[0].equalsIgnoreCase("edit") && !args[0].equalsIgnoreCase("change")) {
                 sendMsg(event, "A command already exists for this server.");
             } else {
-                if (editCustomCommand(AirUtils.COMMAND_MANAGER.getCustomCommand(commandName, guildId), commandAction))
-                    sendMsg(event, "The command has been updated.");
+                editCustomCommand(event, AirUtils.COMMAND_MANAGER.getCustomCommand(commandName, guildId), commandAction);
             }
             return;
         }
-        Triple<Boolean, Boolean, Boolean> result = registerCustomCommand(commandName, commandAction, guildId);
-        if (result.getFirst()) {
-            sendMsg(event, "Command added.");
-        } else {
-            String error = "Failed to add custom command. \n Reason(s): %s";
-            String reason = "";
-            if (result.getSecond()) {
-                reason += "The command was already found.\n";
-            } else if (result.getThird()) {
-                reason += "You reached the limit of 50 custom commands on this server.\n";
-            } else if (!result.getSecond() && !result.getThird()) {
-                reason += "We have an database issue.";
-            }
-            sendMsg(event, String.format(error, reason));
-        }
+        registerCustomCommand(event, commandName, commandAction, guildId);
+
     }
 
     private boolean commandExists(String name, String guild) {
         return AirUtils.COMMAND_MANAGER.getCustomCommand(name, guild) != null;
     }
 
-    private Triple<Boolean, Boolean, Boolean> registerCustomCommand(String name, String action, String guildId) {
-        return AirUtils.COMMAND_MANAGER.addCustomCommand(new CustomCommandImpl(name, action, guildId));
+    private void registerCustomCommand(GuildMessageReceivedEvent event, String name, String action, String guildId) {
+        AirUtils.COMMAND_MANAGER.addCustomCommand(event, new CustomCommandImpl(name, action, guildId));
     }
 
-    private boolean editCustomCommand(CustomCommand customCommand, String newMessage) {
+    private void editCustomCommand(GuildMessageReceivedEvent event, CustomCommand customCommand, String newMessage) {
         CustomCommand cmd = new CustomCommandImpl(customCommand.getName(), newMessage, customCommand.getGuildId());
-        return AirUtils.COMMAND_MANAGER.editCustomCommand(cmd);
+        AirUtils.COMMAND_MANAGER.editCustomCommand(event, cmd);
     }
 
     @Override
