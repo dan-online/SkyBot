@@ -34,6 +34,8 @@ import me.duncte123.weebJava.types.TokenType;
 import ml.duncte123.skybot.CommandManager;
 import ml.duncte123.skybot.Settings;
 import ml.duncte123.skybot.connections.database.DBManager;
+import ml.duncte123.skybot.objects.command.custom.CustomCommand;
+import ml.duncte123.skybot.objects.command.custom.CustomCommandCodecImpl;
 import ml.duncte123.skybot.objects.discord.user.Profile;
 import ml.duncte123.skybot.objects.guild.GuildSettings;
 import ml.duncte123.skybot.objects.guild.GuildSettingsCodecImpl;
@@ -41,6 +43,7 @@ import net.dv8tion.jda.core.OnlineStatus;
 import net.dv8tion.jda.core.entities.Game;
 import net.dv8tion.jda.core.entities.Guild;
 import net.dv8tion.jda.core.entities.TextChannel;
+import org.bson.Document;
 import org.bson.codecs.configuration.CodecRegistries;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -79,6 +82,9 @@ public class AirUtils {
     public static final MongoDatabase MONGO_DATABASE = MONGO_CLIENT.getDatabase(CONFIG.getString("mongo.database"));
     public static final MongoCollection<GuildSettings> MONGO_GUILDSETTINGS = MONGO_DATABASE.getCollection("guildsettings", GuildSettings.class)
             .withCodecRegistry(CodecRegistries.fromCodecs(new GuildSettingsCodecImpl()));
+    public static final MongoCollection<CustomCommand> MONGO_CUSTOMCOMMANDS = MONGO_DATABASE.getCollection("customcommands", CustomCommand.class)
+            .withCodecRegistry(CodecRegistries.fromCodecs(new CustomCommandCodecImpl()));
+    public static final MongoCollection<Document> MONGO_QUOTES = MONGO_DATABASE.getCollection("footerquotes");
     public static final CommandManager COMMAND_MANAGER = new CommandManager();
     public static final WeebApi WEEB_API = new WeebApiBuilder(TokenType.WOLKETOKENS)
             .setBotInfo("DuncteBot(SkyBot)", Settings.VERSION, "Production")

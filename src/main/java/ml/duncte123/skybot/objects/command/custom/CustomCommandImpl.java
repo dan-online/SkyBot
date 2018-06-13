@@ -28,12 +28,20 @@ public class CustomCommandImpl extends Command implements CustomCommand {
 
     private final String invoke;
     private final String message;
-    private final String guildId;
+    private final long guildId;
+
+    public CustomCommandImpl(String invoke, String message, long guildId) {
+        this.invoke = invoke;
+        this.message = message;
+        this.guildId = guildId;
+
+        this.category = CommandCategory.UNLISTED;
+    }
 
     public CustomCommandImpl(String invoke, String message, String guildId) {
         this.invoke = invoke;
         this.message = message;
-        this.guildId = guildId;
+        this.guildId = Long.parseLong(guildId);
 
         this.category = CommandCategory.UNLISTED;
     }
@@ -44,13 +52,17 @@ public class CustomCommandImpl extends Command implements CustomCommand {
     }
 
     @Override
-    public String getGuildId() {
+    public long getGuildIdLong() {
         return guildId;
+    }
+    @Override
+    public String getGuildId() {
+        return Long.toUnsignedString(guildId);
     }
 
     @Override
     public void executeCommand(@NotNull String invoke, @NotNull String[] args, @NotNull GuildMessageReceivedEvent event) {
-        if (guildId.equals(event.getGuild().getId()))
+        if (guildId == event.getGuild().getIdLong())
             MessageUtils.sendMsg(event, message);
     }
 

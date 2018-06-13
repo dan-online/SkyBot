@@ -28,10 +28,6 @@ import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Arrays;
 
 @SuppressWarnings({"SqlDialectInspection", "SqlNoDataSourceInspection"})
@@ -76,30 +72,16 @@ public class GuildSettingsUtils {
         if (!AirUtils.NONE_SQLITE) return;
         logger.debug("Loading footer quotes");
 
-        String dbName = AirUtils.DB.getName();
-        AirUtils.DB.run(() -> {
-            Connection database = AirUtils.DB.getConnManager().getConnection();
-            try {
-                Statement smt = database.createStatement();
-
-                ResultSet resSettings = smt.executeQuery("SELECT * FROM " + dbName + ".footerQuotes");
-
-                while (resSettings.next()) {
-                    String quote = resSettings.getString("quote");
-                    String user = resSettings.getString("name");
-                    EmbedUtils.footerQuotes.put(quote, user);
-                }
-
-                logger.debug("Loaded " + EmbedUtils.footerQuotes.size() + " quotes.");
-            } catch (Exception e) {
-                e.printStackTrace();
-            } finally {
-                try {
-                    database.close();
-                } catch (SQLException e2) {
-                    e2.printStackTrace();
-                }
+        AirUtils.MONGO_CLIENT.startSession((session, sessionException) -> {
+            if (sessionException != null) {
+                logger.error("Aborting! Sessions are denied by the database.", sessionException);
+                System.exit(-2);
             }
+
+            AirUtils.MONGO_QUOTES.find(session)
+                    .forEach((quote) -> EmbedUtils.footerQuotes.put(quote.getString("quote"), quote.getString("name")), DEFAULT_VOID_CALLBACK);
+
+            session.close();
         });
     }
 
@@ -115,7 +97,8 @@ public class GuildSettingsUtils {
                 System.exit(-2);
             }
 
-            AirUtils.MONGO_GUILDSETTINGS.find().forEach((guildSetting) -> AirUtils.guildSettings.put(guildSetting.getGuildId(), guildSetting), DEFAULT_VOID_CALLBACK);
+            AirUtils.MONGO_GUILDSETTINGS.find(session)
+                    .forEach((guildSetting) -> AirUtils.guildSettings.put(guildSetting.getGuildId(), guildSetting), DEFAULT_VOID_CALLBACK);
 
             session.close();
         });

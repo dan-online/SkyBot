@@ -29,6 +29,8 @@ public interface CustomCommand {
 
     String getGuildId();
 
+    long getGuildIdLong();
+
     void executeCommand(@NotNull String invoke, @NotNull String[] args, @NotNull GuildMessageReceivedEvent event);
 
 }

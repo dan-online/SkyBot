@@ -47,7 +47,6 @@ public class GuildSettingsCodecImpl implements Codec<GuildSettings> {
 
         reader.readEndDocument();
 
-
         return setting;
     }
 
