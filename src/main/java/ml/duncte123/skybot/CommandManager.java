@@ -34,10 +34,7 @@ import org.reflections.Reflections;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -76,10 +73,8 @@ public class CommandManager {
     public List<Command> getSortedCommands() {
         if(commandsSorted.isEmpty()) {
             List<Command> commandSet = new ArrayList<>();
-            List<String> names = new ArrayList<>();
-            getCommands().stream().filter(cmd -> cmd.getCategory() != CommandCategory.UNLISTED)
-                    .collect(Collectors.toSet()).forEach(c -> names.add(c.getName()));
-            Collections.sort(names);
+            List<String> names = getCommands().stream().filter(cmd -> cmd.getCategory() != CommandCategory.UNLISTED)
+                    .map(Command::getName).sorted().collect(Collectors.toList());
             names.forEach(n -> commandSet.add(getCommand(n)));
             commandsSorted.addAll(commandSet);
         }
@@ -144,7 +139,7 @@ public class CommandManager {
 
         if (insertInDb) {
 
-            AirUtils.MONGO_CLIENT.startSession((session, sessionException) -> {
+            AirUtils.MONGO_ASYNC_CLIENT.startSession((session, sessionException) -> {
                 if (sessionException != null) {
                     logger.error("Aborting! Sessions are denied by the database.", sessionException);
                     System.exit(-2);
@@ -209,7 +204,7 @@ public class CommandManager {
         if (cmd == null) {
             MessageUtils.sendErrorWithMessage(message, String.format("The command with name %s does not exist here!", name));
         }
-        AirUtils.MONGO_CLIENT.startSession((session, sessionException) -> {
+        AirUtils.MONGO_ASYNC_CLIENT.startSession((session, sessionException) -> {
             if (sessionException != null) {
                 logger.error("Aborting! Sessions are denied by the database.", sessionException);
                 System.exit(-2);
@@ -303,7 +298,7 @@ public class CommandManager {
     }
 
     private void loadCustomCommands() {
-        AirUtils.MONGO_CLIENT.startSession((session, sessionException) -> {
+        AirUtils.MONGO_ASYNC_CLIENT.startSession((session, sessionException) -> {
             if (sessionException != null) {
                 logger.error("Aborting! Sessions are denied by the database.", sessionException);
                 System.exit(-2);

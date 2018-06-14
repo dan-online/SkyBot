@@ -72,7 +72,7 @@ public class GuildSettingsUtils {
         if (!AirUtils.NONE_SQLITE) return;
         logger.debug("Loading footer quotes");
 
-        AirUtils.MONGO_CLIENT.startSession((session, sessionException) -> {
+        AirUtils.MONGO_ASYNC_CLIENT.startSession((session, sessionException) -> {
             if (sessionException != null) {
                 logger.error("Aborting! Sessions are denied by the database.", sessionException);
                 System.exit(-2);
@@ -91,7 +91,7 @@ public class GuildSettingsUtils {
     private static void loadGuildSettings() {
         logger.debug("Loading Guild settings.");
 
-        AirUtils.MONGO_CLIENT.startSession((session, sessionException) -> {
+        AirUtils.MONGO_ASYNC_CLIENT.startSession((session, sessionException) -> {
             if (sessionException != null) {
                 logger.error("Aborting! Sessions are denied by the database.", sessionException);
                 System.exit(-2);
@@ -131,7 +131,7 @@ public class GuildSettingsUtils {
             registerNewGuild(guild);
             return;
         }
-        AirUtils.MONGO_CLIENT.startSession((session, sessionException) -> {
+        AirUtils.MONGO_ASYNC_CLIENT.startSession((session, sessionException) -> {
             if (sessionException != null) {
                 sessionException.printStackTrace();
             }
@@ -156,7 +156,7 @@ public class GuildSettingsUtils {
         }
         GuildSettings newGuildSettings = new GuildSettings(g.getId());
 
-        AirUtils.MONGO_CLIENT.startSession((session, sessionException) -> {
+        AirUtils.MONGO_ASYNC_CLIENT.startSession((session, sessionException) -> {
             if (sessionException != null) {
                 sessionException.printStackTrace();
             }
@@ -177,7 +177,7 @@ public class GuildSettingsUtils {
      */
     public static void deleteGuild(Guild g) {
         AirUtils.guildSettings.remove(g.getId());
-        AirUtils.MONGO_CLIENT.startSession((session, sessionException) -> {
+        AirUtils.MONGO_ASYNC_CLIENT.startSession((session, sessionException) -> {
             if (sessionException != null) {
                 sessionException.printStackTrace();
             }

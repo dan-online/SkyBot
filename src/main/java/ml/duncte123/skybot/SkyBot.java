@@ -25,7 +25,6 @@ import ml.duncte123.skybot.unstable.utils.ComparatingUtils;
 import ml.duncte123.skybot.utils.AirUtils;
 import ml.duncte123.skybot.utils.GuildSettingsUtils;
 import ml.duncte123.skybot.utils.HelpEmbeds;
-import ml.duncte123.skybot.utils.TagUtils;
 import net.dv8tion.jda.bot.sharding.DefaultShardManagerBuilder;
 import net.dv8tion.jda.bot.sharding.ShardManager;
 import net.dv8tion.jda.core.entities.Game;
@@ -82,8 +81,6 @@ public class SkyBot {
         //Load the settings before loading the bot
         GuildSettingsUtils.loadAllSettings();
 
-        //Load the tags
-        TagUtils.loadAllTags();
 
         //Set the token to a string
         String token = AirUtils.CONFIG.getString("discord.token", "Your Bot Token");

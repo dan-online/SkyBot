@@ -21,7 +21,6 @@ package ml.duncte123.skybot.utils;
 import com.github.natanbc.reliqua.request.PendingRequest;
 import com.mongodb.ConnectionString;
 import com.mongodb.async.client.*;
-import com.mongodb.connection.SslSettings;
 import com.mongodb.connection.netty.NettyStreamFactoryFactory;
 import com.wolfram.alpha.WAEngine;
 import io.netty.channel.EventLoopGroup;
@@ -65,28 +64,47 @@ public class AirUtils {
     public static final boolean NONE_SQLITE = CONFIG.getBoolean("use_database", false);
     public static final Random RAND = new Random();
     public static final DBManager DB = new DBManager();
+
+    //Generic MongoDB
+
+    private static final ConnectionString CONNECTION_STRING = new ConnectionString(
+            String.format("mongodb%s://%s:%s@%s/?streamType=netty&ssl=true",
+                            (CONFIG.getBoolean("mongo.use_srv")) ? "+srv" : "",
+            CONFIG.getString("mongo.username"),
+            CONFIG.getString("mongo.password"),
+            CONFIG.getString("mongo.host")));
+
+    // Async MongoDB
     public static final EventLoopGroup eventLoopGroup = new NioEventLoopGroup();
-    public static final MongoClient MONGO_CLIENT = MongoClients.create(
+    public static final MongoClient MONGO_ASYNC_CLIENT = MongoClients.create(
             MongoClientSettings.builder()
                     .streamFactoryFactory(NettyStreamFactoryFactory.builder()
                             .eventLoopGroup(eventLoopGroup).build())
-                    .sslSettings(SslSettings.builder()
-                            .enabled(true)
-                            .build())
-                    .applyConnectionString(new ConnectionString(
-                            String.format("mongodb%s://%s:%s@%s/?streamType=netty&ssl=true",
-                            (CONFIG.getBoolean("mongo.use_srv")) ? "+srv" : "",
-                            CONFIG.getString("mongo.username"),
-                            CONFIG.getString("mongo.password"),
-                            CONFIG.getString("mongo.host"))))
+                    .applyToSslSettings(builder -> builder.enabled(true))
+                    .applyConnectionString(CONNECTION_STRING)
                     .build()
     );
-    public static final MongoDatabase MONGO_DATABASE = MONGO_CLIENT.getDatabase(CONFIG.getString("mongo.database"));
-    public static final MongoCollection<GuildSettings> MONGO_GUILDSETTINGS = MONGO_DATABASE.getCollection("guildsettings", GuildSettings.class)
+    public static final MongoDatabase MONGO_ASYNC_DATABASE = MONGO_ASYNC_CLIENT.getDatabase(CONFIG.getString("mongo.database"));
+    public static final MongoCollection<GuildSettings> MONGO_ASYNC_GUILDSETTINGS = MONGO_ASYNC_DATABASE.getCollection("guildsettings", GuildSettings
+            .class)
             .withCodecRegistry(CodecRegistries.fromCodecs(new GuildSettingsCodecImpl()));
-    public static final MongoCollection<CustomCommand> MONGO_CUSTOMCOMMANDS = MONGO_DATABASE.getCollection("customcommands", CustomCommand.class)
+    public static final MongoCollection<CustomCommand> MONGO_ASYNC_CUSTOMCOMMANDS = MONGO_ASYNC_DATABASE.getCollection("customcommands",
+            CustomCommand.class)
             .withCodecRegistry(CodecRegistries.fromCodecs(new CustomCommandCodecImpl()));
-    public static final MongoCollection<Document> MONGO_QUOTES = MONGO_DATABASE.getCollection("footerquotes");
+    public static final MongoCollection<Document> MONGO_ASYNC_QUOTES = MONGO_ASYNC_DATABASE.getCollection("footerquotes");
+
+    // Sync MongoDB
+    public static final com.mongodb.client.MongoClient MONGO_SYNC_CLIENT = com.mongodb.client.MongoClients.create(
+            com.mongodb.MongoClientSettings.builder()
+                    .streamFactoryFactory(NettyStreamFactoryFactory.builder()
+                            .eventLoopGroup(eventLoopGroup).build())
+                    .applyToSslSettings(builder -> builder.enabled(true))
+                    .applyConnectionString(CONNECTION_STRING)
+                    .build()
+    );
+    public static final com.mongodb.client.MongoDatabase MONGO_SYNC_DATABASE = MONGO_SYNC_CLIENT.getDatabase(CONFIG.getString("mongo.database"));
+    public static final com.mongodb.client.MongoCollection MONGO_SYNC_WARNINGS = MONGO_SYNC_DATABASE.getCollection("warnings");
+
     public static final CommandManager COMMAND_MANAGER = new CommandManager();
     public static final WeebApi WEEB_API = new WeebApiBuilder(TokenType.WOLKETOKENS)
             .setBotInfo("DuncteBot(SkyBot)", Settings.VERSION, "Production")

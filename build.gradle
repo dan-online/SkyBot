@@ -66,7 +66,7 @@ buildConfig {
     version = project.version
     buildConfigField("String", "ownerId", "191231307290771456")
     buildConfigField("boolean", "UNSTABLE", "false")
-    buildConfigField("String", "datebase", "SQL & Mongo (mixed mode)")
+    buildConfigField("String", "datebase", "MongoDB")
     packageName = project.group
     charset = 'UTF-8'
 
@@ -95,6 +95,7 @@ dependencies {
 
     // MongoDB
     compile 'org.mongodb:mongodb-driver-async:3.8.0-beta3'
+    compile 'org.mongodb:mongodb-driver-sync:3.8.0-beta3'
 
     // MySQL
     compile group: 'mysql', name: 'mysql-connector-java', version: '5.1.6'
