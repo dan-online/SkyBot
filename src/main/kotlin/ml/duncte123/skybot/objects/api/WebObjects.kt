@@ -19,7 +19,7 @@
 package ml.duncte123.skybot.objects.api
 
 import org.json.JSONObject
-import java.sql.Date
+import java.time.OffsetDateTime
 import kotlin.reflect.KVisibility
 import kotlin.reflect.full.memberProperties
 
@@ -29,7 +29,10 @@ data class LlamaObject(val id: Int, val file: String) : ApiObject()
 data class KpopObject(val id: Int, val name: String, val band: String, val image: String) : ApiObject()
 
 data class WarnObject(val userId: String, val warnings: List<Warning>) : ApiObject()
-data class Warning(val id: Int, val date: Date, val expiryDate: Date, val modId: String, val reason: String, val guildId: String? = null) : ApiObject()
+data class Warning(val reason: String, val date: OffsetDateTime, val modId: Long,
+                   val expiryDate: OffsetDateTime, val userId: Long, val guildId: Long) : ApiObject() {
+    constructor() : this("", OffsetDateTime.now(), -1L, OffsetDateTime.now(), -1L, -1L)
+}
 
 
 open class ApiObject {

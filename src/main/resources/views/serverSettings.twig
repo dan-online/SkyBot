@@ -29,6 +29,7 @@
                                 <option value="{{ textChannel.getId() }}">#{{ textChannel.getName() }}</option>
                             {% endif %}
                         {% endfor %}
+                        <option value="{{ -1 }}">Disable</option>
                     </select>
                     <label for="welcomeChannel">Welcome/Leave Channel</label>
                     <!-- Switch -->
@@ -54,7 +55,7 @@
                                 <option value="{{ role.getId() }}">@{{ role.getName() }}</option>
                             {% endif %}
                         {% endfor %}
-                        <option value="">Disable</option>
+                        <option value="{{ -1 }}">Disable</option>
                     </select>
                     <label for="autoRoleRole">AutoRole</label>
                     <!-- Switch -->
@@ -80,6 +81,7 @@
                                 <option value="{{ textChannel.getId() }}">#{{ textChannel.getName() }}</option>
                             {% endif %}
                         {% endfor %}
+                        <option value="{{ -1 }}">Disable</option>
                     </select>
                     <label for="modChannel">ModLog Channel</label>
                 </div>
@@ -159,7 +161,7 @@
                                 <option value="{{ role.getId() }}">@{{ role.getName() }}</option>
                             {% endif %}
                         {% endfor %}
-                        <option value="">Disable</option>
+                        <option value="{{ -1 }}">Disable</option>
                     </select>
                     <label for="muteRole">Mute role</label>
                 </div>

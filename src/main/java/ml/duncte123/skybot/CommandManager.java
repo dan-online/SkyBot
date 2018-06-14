@@ -146,7 +146,7 @@ public class CommandManager {
                 }
 
                 if (isEdit) {
-                    AirUtils.MONGO_CUSTOMCOMMANDS.updateOne(session,
+                    AirUtils.MONGO_ASYNC_CUSTOMCOMMANDS.updateOne(session,
                         Filters.and(
                                 Filters.eq("invoke", command.getName()),
                                 Filters.eq("guildId", Long.parseLong(command.getGuildId()))),
@@ -166,7 +166,7 @@ public class CommandManager {
                             }
                     });
                 } else {
-                    AirUtils.MONGO_CUSTOMCOMMANDS.insertOne(session, command,
+                    AirUtils.MONGO_ASYNC_CUSTOMCOMMANDS.insertOne(session, command,
                         (result, exception) -> {
                             if (exception != null) {
                                 if (message != null)
@@ -209,7 +209,7 @@ public class CommandManager {
                 logger.error("Aborting! Sessions are denied by the database.", sessionException);
                 System.exit(-2);
             }
-            AirUtils.MONGO_CUSTOMCOMMANDS.deleteOne(session, Filters.and(Filters.eq("invoke", name), Filters.eq("guildId", Long.parseLong
+            AirUtils.MONGO_ASYNC_CUSTOMCOMMANDS.deleteOne(session, Filters.and(Filters.eq("invoke", name), Filters.eq("guildId", Long.parseLong
                     (guildId))), (result, exception) -> {
                 if (exception != null) {
                     MessageUtils.sendErrorWithMessage(message, "Either the command was removed or an database error appeared.\n" +
@@ -304,7 +304,7 @@ public class CommandManager {
                 System.exit(-2);
             }
 
-            AirUtils.MONGO_CUSTOMCOMMANDS.find(session)
+            AirUtils.MONGO_ASYNC_CUSTOMCOMMANDS.find(session)
                     .forEach((command) -> addCustomCommand(null, command, false, false), GuildSettingsUtils.DEFAULT_VOID_CALLBACK);
 
             session.close();

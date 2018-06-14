@@ -18,7 +18,6 @@ public class GuildSettingsCodecImpl implements Codec<GuildSettings> {
         GuildSettings setting = new GuildSettings(reader.readInt64("guildId"))
                 .setCustomPrefix(reader.readString("prefix"))
                 .setAutoroleRole(reader.readInt64("autoRole"))
-                .setGuildName(reader.readString("guildName"))
                 .setMuteRoleId(reader.readInt64("muteRoleId"));
 
         List<Long> rates = new ArrayList<>(6);
@@ -56,7 +55,6 @@ public class GuildSettingsCodecImpl implements Codec<GuildSettings> {
         writer.writeInt64("guildId", value.getGuildIdLong());
         writer.writeString("prefix", value.getCustomPrefix());
         writer.writeInt64("autoRole", value.getAutoroleRoleLong());
-        writer.writeString("guildName", value.getGuildName());
         writer.writeInt64("muteRoleId", value.getMuteRoleIdLong());
         writer.writeStartArray("ratelimits");
         for (final long limit : value.getRatelimits()) {

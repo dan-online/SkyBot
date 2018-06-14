@@ -18,12 +18,14 @@
 
 package ml.duncte123.skybot.utils
 
+import com.mongodb.client.model.Filters
 import ml.duncte123.skybot.objects.api.KpopObject
 import ml.duncte123.skybot.objects.api.LlamaObject
 import ml.duncte123.skybot.objects.api.WarnObject
 import ml.duncte123.skybot.objects.api.Warning
 import java.sql.ResultSet
-import java.sql.SQLException
+import java.time.OffsetDateTime
+import java.util.*
 
 object ApiUtils {
 
@@ -48,13 +50,13 @@ object ApiUtils {
         val conn = AirUtils.DB.getConnManager().connection
 
         lateinit var resultSet: ResultSet
-        if (!search.isEmpty()) {
+        resultSet = if (!search.isEmpty()) {
             val stmt = conn.prepareStatement("SELECT * FROM kpop WHERE name LIKE ? OR id=? LIMIT 1")
             stmt.setString(1, "%$search%")
             stmt.setString(2, search)
-            resultSet = stmt.executeQuery()
+            stmt.executeQuery()
         } else {
-            resultSet = conn.createStatement().executeQuery("SELECT * FROM kpop ORDER BY RAND() LIMIT 1")
+            conn.createStatement().executeQuery("SELECT * FROM kpop ORDER BY RAND() LIMIT 1")
         }
         resultSet.next()
         val obj = KpopObject(
@@ -70,33 +72,18 @@ object ApiUtils {
 
     @JvmStatic
     fun getWarnsForUser(userId: String, guildId: String): WarnObject {
-        val conn = AirUtils.DB.getConnManager().connection
-        try {
-            val smt = conn.prepareStatement(
-                    "SELECT * FROM `warnings` WHERE user_id=? AND guild_id=? AND (CURDATE() <= DATE_ADD(expire_date, INTERVAL 3 DAY))")
-            smt.setString(1, userId)
-            smt.setString(2, guildId)
-            val result = smt.executeQuery()
 
-            val warnings = ArrayList<Warning>()
+        val warnings = ArrayList<Warning>()
 
-            while (result.next()) {
-                warnings.add(Warning(
-                        result.getInt("id"),
-                        result.getDate("warn_date"),
-                        result.getDate("expire_date"),
-                        result.getString("mod_id"),
-                        result.getString("reason"),
-                        result.getString("guild_id")
-                ))
-            }
+        AirUtils.MONGO_SYNC_WARNINGS.find(
+                Filters.and(
+                        Filters.eq("user_id", userId.toLong()),
+                        Filters.eq("guild_id"),
+                        Filters.gte("expire_date", OffsetDateTime.now().toEpochSecond())
+            )).forEach { warnings.add(it) }
 
-            conn.close()
-            return WarnObject(userId, warnings)
-        } catch (e: SQLException) {
-            conn.close()
-            throw e
-        }
+
+        return WarnObject(userId, warnings)
     }
 
 }

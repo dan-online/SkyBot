@@ -78,7 +78,7 @@ public class GuildSettingsUtils {
                 System.exit(-2);
             }
 
-            AirUtils.MONGO_QUOTES.find(session)
+            AirUtils.MONGO_ASYNC_QUOTES.find(session)
                     .forEach((quote) -> EmbedUtils.footerQuotes.put(quote.getString("quote"), quote.getString("name")), DEFAULT_VOID_CALLBACK);
 
             session.close();
@@ -97,7 +97,7 @@ public class GuildSettingsUtils {
                 System.exit(-2);
             }
 
-            AirUtils.MONGO_GUILDSETTINGS.find(session)
+            AirUtils.MONGO_ASYNC_GUILDSETTINGS.find(session)
                     .forEach((guildSetting) -> AirUtils.guildSettings.put(guildSetting.getGuildId(), guildSetting), DEFAULT_VOID_CALLBACK);
 
             session.close();
@@ -136,7 +136,7 @@ public class GuildSettingsUtils {
                 sessionException.printStackTrace();
             }
 
-            MongoCollection<GuildSettings> settingsCollection = AirUtils.MONGO_GUILDSETTINGS;
+            MongoCollection<GuildSettings> settingsCollection = AirUtils.MONGO_ASYNC_GUILDSETTINGS;
             settingsCollection.deleteOne(session, new Document("guildId", guild.getIdLong()), (SingleResultCallback<DeleteResult>) DEFAULT_OBJECT_CALLBACK);
             settingsCollection.insertOne(session, settings, DEFAULT_VOID_CALLBACK);
 
@@ -161,7 +161,7 @@ public class GuildSettingsUtils {
                 sessionException.printStackTrace();
             }
 
-            MongoCollection<GuildSettings> settingsCollection = AirUtils.MONGO_GUILDSETTINGS;
+            MongoCollection<GuildSettings> settingsCollection = AirUtils.MONGO_ASYNC_GUILDSETTINGS;
             settingsCollection.insertOne(session, newGuildSettings, DEFAULT_VOID_CALLBACK);
 
             session.close();
@@ -182,7 +182,7 @@ public class GuildSettingsUtils {
                 sessionException.printStackTrace();
             }
 
-            MongoCollection<GuildSettings> settingsCollection = AirUtils.MONGO_GUILDSETTINGS;
+            MongoCollection<GuildSettings> settingsCollection = AirUtils.MONGO_ASYNC_GUILDSETTINGS;
             settingsCollection.deleteOne(session, new Document("guildId", g.getIdLong()), (SingleResultCallback<DeleteResult>) DEFAULT_OBJECT_CALLBACK);
 
             session.close();

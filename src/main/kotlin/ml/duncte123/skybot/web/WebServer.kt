@@ -21,6 +21,7 @@ package ml.duncte123.skybot.web
 import com.jagrosh.jdautilities.oauth2.OAuth2Client
 import com.jagrosh.jdautilities.oauth2.Scope
 import com.jagrosh.jdautilities.oauth2.entities.OAuth2Guild
+import com.mongodb.client.model.Filters
 import me.duncte123.botCommons.web.WebUtils.EncodingType.APPLICATION_JSON
 import ml.duncte123.skybot.Settings
 import ml.duncte123.skybot.SkyBot
@@ -43,6 +44,7 @@ import spark.kotlin.*
 import spark.template.jtwig.JtwigTemplateEngine
 import java.nio.charset.Charset
 import java.sql.SQLException
+import java.time.OffsetDateTime
 import java.util.*
 
 
@@ -107,22 +109,22 @@ class WebServer {
 
                 val prefix = params["prefix"]
                 val serverDescription = params["serverDescription"]
-                val welcomeChannel = params["welcomeChannel"]
+                val welcomeChannel = if (params["welcomeChannel"] == null) -1 else params["welcomeChannel"]!!.toLong()
                 val welcomeLeaveEnabled = paramToBoolean(params["welcomeChannelCB"])
-                val autorole = params["autoRoleRole"]
+                val autorole = if (params["autoRoleRole"] == null) -1 else params["autoRoleRole"]!!.toLong()
                 //val autoRoleEnabled      = params["autoRoleRoleCB"]
-                val modLogChannel = params["modChannel"]
+                val modLogChannel = if (params["modChannel"] == null) -1 else params["modChannel"]!!.toLong()
                 val announceTracks = paramToBoolean(params["announceTracks"])
                 val autoDeHoist = paramToBoolean(params["autoDeHoist"])
                 val filterInvites = paramToBoolean(params["filterInvites"])
                 val welcomeMessage = params["welcomeMessage"]
                 val leaveMessage = params["leaveMessage"]
-                val muteRole = params["muteRole"]
+                val muteRole = if (params["muteRole"] == null) -1 else params["muteRole"]!!.toLong()
                 val kickMode = paramToBoolean(params["kickMode"])
-                val rateLimits: MutableList<Int> = arrayListOf()
+                val rateLimits: MutableList<Long> = arrayListOf()
 
                 for (i in 0..5) {
-                    rateLimits.add(params["rateLimits[$i]"]!!.toInt())
+                    rateLimits.add(params["rateLimits[$i]"]!!.toLong())
                 }
 
                 val guild = getGuildFromRequest(request)
@@ -141,6 +143,7 @@ class WebServer {
                         .setFilterInvites(filterInvites)
                         .setMuteRoleId(muteRole)
                         .setKickState(kickMode)
+                        .setRatelimits(rateLimits.toLongArray())
 
                 GuildSettingsUtils.updateGuildSettings(guild, newSettings)
 
@@ -250,8 +253,7 @@ class WebServer {
         path("/crons") {
 
             get("/clearExpiredWarns") {
-                AirUtils.DB.connManager.connection.createStatement()
-                        .execute("DELETE FROM `warnings` WHERE (CURDATE() >= DATE_ADD(expire_date, INTERVAL 5 DAY))")
+                AirUtils.MONGO_SYNC_WARNINGS.deleteMany(Filters.lte("expire_date", OffsetDateTime.now().minusDays(5).toEpochSecond()))
             }
 
         }

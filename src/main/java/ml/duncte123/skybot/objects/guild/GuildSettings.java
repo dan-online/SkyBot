@@ -26,7 +26,6 @@ import ml.duncte123.skybot.Settings;
 public class GuildSettings {
 
     private final long guildId;
-    private String guildName = null;
     private boolean enableJoinMessage = false;
     private boolean enableSwearFilter = false;
     private String customJoinMessage = "Welcome {{USER_MENTION}}, to the official **{{GUILD_NAME}}** guild.";
@@ -409,15 +408,6 @@ public class GuildSettings {
 
     public GuildSettings setKickState(boolean newState) {
         kickInstead = newState;
-        return this;
-    }
-
-    public String getGuildName() {
-        return guildName;
-    }
-
-    public GuildSettings setGuildName(String guildName) {
-        this.guildName = guildName;
         return this;
     }
 
