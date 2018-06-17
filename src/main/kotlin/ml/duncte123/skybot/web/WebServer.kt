@@ -22,13 +22,16 @@ import com.jagrosh.jdautilities.oauth2.OAuth2Client
 import com.jagrosh.jdautilities.oauth2.Scope
 import com.jagrosh.jdautilities.oauth2.entities.OAuth2Guild
 import com.mongodb.client.model.Filters
+import com.mongodb.connection.netty.NettyStreamFactoryFactory
+import io.netty.channel.nio.NioEventLoopGroup
 import me.duncte123.botCommons.web.WebUtils.EncodingType.APPLICATION_JSON
 import ml.duncte123.skybot.Settings
 import ml.duncte123.skybot.SkyBot
 import ml.duncte123.skybot.objects.WebVariables
+import ml.duncte123.skybot.objects.api.Warning
+import ml.duncte123.skybot.objects.api.WarningCodecImpl
 import ml.duncte123.skybot.utils.AirUtils
-import ml.duncte123.skybot.utils.AirUtils.CONFIG
-import ml.duncte123.skybot.utils.AirUtils.colorToHex
+import ml.duncte123.skybot.utils.AirUtils.*
 import ml.duncte123.skybot.utils.ApiUtils
 import ml.duncte123.skybot.utils.AudioUtils
 import ml.duncte123.skybot.utils.GuildSettingsUtils
@@ -36,6 +39,7 @@ import net.dv8tion.jda.core.Permission
 import net.dv8tion.jda.core.entities.Guild
 import org.apache.http.NameValuePair
 import org.apache.http.client.utils.URLEncodedUtils
+import org.bson.codecs.configuration.CodecRegistries
 import org.json.JSONObject
 import spark.ModelAndView
 import spark.Request
@@ -253,7 +257,22 @@ class WebServer {
         path("/crons") {
 
             get("/clearExpiredWarns") {
-                AirUtils.MONGO_SYNC_WARNINGS.deleteMany(Filters.lte("expire_date", OffsetDateTime.now().minusDays(5).toEpochSecond()))
+                val eventLoopGroup = NioEventLoopGroup()
+                val client: com.mongodb.client.MongoClient = com.mongodb.client.MongoClients.create(
+                        com.mongodb.MongoClientSettings.builder()
+                                .streamFactoryFactory(NettyStreamFactoryFactory.builder()
+                                        .eventLoopGroup(eventLoopGroup).build())
+                                .applyToSslSettings { builder -> builder.enabled(true) }
+                                .applyConnectionString(CONNECTION_STRING)
+                                .build()
+                )
+                val session = client.startSession()
+
+                client.getDatabase(CONFIG.getString("mongo.database")).getCollection("warnings", Warning::class.java)
+                        .withCodecRegistry(CodecRegistries.fromCodecs(WarningCodecImpl()))
+                        .deleteMany(session, Filters.lte("expire_date", OffsetDateTime.now().minusDays(5).toEpochSecond()))
+
+                session.close(); client.close(); eventLoopGroup.shutdownGracefully()
             }
 
         }

@@ -26,7 +26,9 @@ import kotlin.reflect.full.memberProperties
 
 data class LlamaObject(val id: Int, val file: String) : ApiObject()
 
-data class KpopObject(val id: Int, val name: String, val band: String, val image: String) : ApiObject()
+data class KpopObject(val name: String, val band: String, val image: String) : ApiObject() {
+    constructor() : this("", "", "")
+}
 
 data class WarnObject(val userId: String, val warnings: List<Warning>) : ApiObject()
 data class Warning(val reason: String, val date: OffsetDateTime, val modId: Long,

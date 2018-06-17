@@ -18,14 +18,15 @@
 
 package ml.duncte123.skybot.utils
 
+import com.mongodb.client.model.Aggregates
 import com.mongodb.client.model.Filters
-import ml.duncte123.skybot.objects.api.KpopObject
-import ml.duncte123.skybot.objects.api.LlamaObject
-import ml.duncte123.skybot.objects.api.WarnObject
-import ml.duncte123.skybot.objects.api.Warning
-import java.sql.ResultSet
+import com.mongodb.connection.netty.NettyStreamFactoryFactory
+import io.netty.channel.nio.NioEventLoopGroup
+import ml.duncte123.skybot.objects.api.*
+import org.bson.codecs.configuration.CodecRegistries
 import java.time.OffsetDateTime
 import java.util.*
+import java.util.regex.Pattern
 
 object ApiUtils {
 
@@ -47,27 +48,36 @@ object ApiUtils {
     @JvmStatic
     fun getRandomKpopMember(search: String = ""): KpopObject {
 
-        val conn = AirUtils.DB.getConnManager().connection
-
-        lateinit var resultSet: ResultSet
-        resultSet = if (!search.isEmpty()) {
-            val stmt = conn.prepareStatement("SELECT * FROM kpop WHERE name LIKE ? OR id=? LIMIT 1")
-            stmt.setString(1, "%$search%")
-            stmt.setString(2, search)
-            stmt.executeQuery()
-        } else {
-            conn.createStatement().executeQuery("SELECT * FROM kpop ORDER BY RAND() LIMIT 1")
-        }
-        resultSet.next()
-        val obj = KpopObject(
-                resultSet.getInt("id"),
-                resultSet.getString("name"),
-                resultSet.getString("band"),
-                resultSet.getString("img")
+        val eventLoopGroup = NioEventLoopGroup()
+        val client: com.mongodb.client.MongoClient = com.mongodb.client.MongoClients.create(
+                com.mongodb.MongoClientSettings.builder()
+                        .streamFactoryFactory(NettyStreamFactoryFactory.builder()
+                                .eventLoopGroup(eventLoopGroup).build())
+                        .applyToSslSettings { builder -> builder.enabled(true) }
+                        .applyConnectionString(AirUtils.CONNECTION_STRING)
+                        .build()
         )
-        conn.close()
 
-        return obj
+        val session = client.startSession()
+        val collection = client.getDatabase(AirUtils.CONFIG.getString("mongo.database")).getCollection("kpop", KpopObject::class.java)
+                .withCodecRegistry(CodecRegistries.fromCodecs(KpopCodecImpl()))
+
+        val kpopObject: KpopObject? = if (search.isNotEmpty()) {
+            collection.find(session, Filters.regex("name", Pattern.compile(search))).limit(1).first()
+        } else {
+            collection.aggregate(session, listOf(
+                    Aggregates.sample(1)
+            )).first()
+        }
+        return if (kpopObject != null) {
+
+            session.close(); client.close(); eventLoopGroup.shutdownGracefully()
+
+            kpopObject
+
+        } else {
+            getRandomKpopMember(search)
+        }
     }
 
     @JvmStatic
@@ -75,13 +85,27 @@ object ApiUtils {
 
         val warnings = ArrayList<Warning>()
 
-        AirUtils.MONGO_SYNC_WARNINGS.find(
+        val eventLoopGroup = NioEventLoopGroup()
+        val client: com.mongodb.client.MongoClient = com.mongodb.client.MongoClients.create(
+                com.mongodb.MongoClientSettings.builder()
+                        .streamFactoryFactory(NettyStreamFactoryFactory.builder()
+                                .eventLoopGroup(eventLoopGroup).build())
+                        .applyToSslSettings { builder -> builder.enabled(true) }
+                        .applyConnectionString(AirUtils.CONNECTION_STRING)
+                        .build()
+        )
+        val session = client.startSession()
+
+        client.getDatabase(AirUtils.CONFIG.getString("mongo.database")).getCollection("kpop", Warning::class.java)
+                .withCodecRegistry(CodecRegistries.fromCodecs(WarningCodecImpl())).find(session,
                 Filters.and(
                         Filters.eq("user_id", userId.toLong()),
                         Filters.eq("guild_id"),
                         Filters.gte("expire_date", OffsetDateTime.now().toEpochSecond())
             )).forEach { warnings.add(it) }
 
+
+        session.close(); client.close(); eventLoopGroup.shutdownGracefully()
 
         return WarnObject(userId, warnings)
     }

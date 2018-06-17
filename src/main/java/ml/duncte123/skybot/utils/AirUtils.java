@@ -33,8 +33,6 @@ import me.duncte123.weebJava.types.TokenType;
 import ml.duncte123.skybot.CommandManager;
 import ml.duncte123.skybot.Settings;
 import ml.duncte123.skybot.connections.database.DBManager;
-import ml.duncte123.skybot.objects.api.Warning;
-import ml.duncte123.skybot.objects.api.WarningCodecImpl;
 import ml.duncte123.skybot.objects.command.custom.CustomCommand;
 import ml.duncte123.skybot.objects.command.custom.CustomCommandCodecImpl;
 import ml.duncte123.skybot.objects.discord.user.Profile;
@@ -69,7 +67,7 @@ public class AirUtils {
 
     //Generic MongoDB
 
-    private static final ConnectionString CONNECTION_STRING = new ConnectionString(
+    public static final ConnectionString CONNECTION_STRING = new ConnectionString(
             String.format("mongodb%s://%s:%s@%s/?streamType=netty&ssl=true",
                             (CONFIG.getBoolean("mongo.use_srv")) ? "+srv" : "",
             CONFIG.getString("mongo.username"),
@@ -77,12 +75,11 @@ public class AirUtils {
             CONFIG.getString("mongo.host")));
 
     // Async MongoDB
-    public static final EventLoopGroup eventLoopGroupAsync = new NioEventLoopGroup();
-    public static final EventLoopGroup eventLoopGroupSync = new NioEventLoopGroup();
+    public static final EventLoopGroup eventLoopGroup = new NioEventLoopGroup(4, runnable -> new Thread(runnable, "MongoDB EventLoopGroup"));
     public static final MongoClient MONGO_ASYNC_CLIENT = MongoClients.create(
             MongoClientSettings.builder()
                     .streamFactoryFactory(NettyStreamFactoryFactory.builder()
-                            .eventLoopGroup(eventLoopGroupAsync).build())
+                            .eventLoopGroup(eventLoopGroup).build())
                     .applyToSslSettings(builder -> builder.enabled(true))
                     .applyConnectionString(CONNECTION_STRING)
                     .build()
@@ -95,19 +92,6 @@ public class AirUtils {
             CustomCommand.class)
             .withCodecRegistry(CodecRegistries.fromCodecs(new CustomCommandCodecImpl()));
     public static final MongoCollection<Document> MONGO_ASYNC_QUOTES = MONGO_ASYNC_DATABASE.getCollection("footerquotes");
-
-    // Sync MongoDB
-    public static final com.mongodb.client.MongoClient MONGO_SYNC_CLIENT = com.mongodb.client.MongoClients.create(
-            com.mongodb.MongoClientSettings.builder()
-                    .streamFactoryFactory(NettyStreamFactoryFactory.builder()
-                            .eventLoopGroup(eventLoopGroupSync).build())
-                    .applyToSslSettings(builder -> builder.enabled(true))
-                    .applyConnectionString(CONNECTION_STRING)
-                    .build()
-    );
-    public static final com.mongodb.client.MongoDatabase MONGO_SYNC_DATABASE = MONGO_SYNC_CLIENT.getDatabase(CONFIG.getString("mongo.database"));
-    public static final com.mongodb.client.MongoCollection<Warning> MONGO_SYNC_WARNINGS = MONGO_SYNC_DATABASE.getCollection("warnings", Warning
-            .class).withCodecRegistry(CodecRegistries.fromCodecs(new WarningCodecImpl()));
 
     public static final CommandManager COMMAND_MANAGER = new CommandManager();
     public static final WeebApi WEEB_API = new WeebApiBuilder(TokenType.WOLKETOKENS)

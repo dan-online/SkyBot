@@ -32,6 +32,7 @@ import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.javaField
 
 class WarningCodecImpl() : ApiObjectCodecImpl<Warning>(Warning::class.java, Warning())
+class KpopCodecImpl() : ApiObjectCodecImpl<KpopObject>(KpopObject::class.java, KpopObject())
 
 open class ApiObjectCodecImpl<T>(private val clazz: Class<T>, private val obj: ApiObject) : Codec<T> {
     override fun getEncoderClass(): Class<T> = clazz
