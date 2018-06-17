@@ -34,15 +34,33 @@ object ApiUtils {
     @JvmStatic
     fun getRandomLlama(): LlamaObject {
 
-        val conn = AirUtils.DB.getConnManager().connection
+        val eventLoopGroup = NioEventLoopGroup()
+        val client: com.mongodb.client.MongoClient = com.mongodb.client.MongoClients.create(
+                com.mongodb.MongoClientSettings.builder()
+                        .streamFactoryFactory(NettyStreamFactoryFactory.builder()
+                                .eventLoopGroup(eventLoopGroup).build())
+                        .applyToSslSettings { builder -> builder.enabled(true) }
+                        .applyConnectionString(AirUtils.CONNECTION_STRING)
+                        .build()
+        )
 
-        val resultSet = conn.createStatement()
-                .executeQuery("SELECT * FROM animal_apis ORDER BY RAND() LIMIT 1")
-        resultSet.next()
-        val obj = LlamaObject(resultSet.getInt("id"), resultSet.getString("file"))
-        conn.close()
+        val session = client.startSession()
+        val collection = client.getDatabase(AirUtils.CONFIG.getString("mongo.database")).getCollection("llamas", LlamaObject::class.java)
+                .withCodecRegistry(CodecRegistries.fromCodecs(LlamaObjectCodecImpl()))
 
-        return obj
+        val llama = collection.aggregate(session, listOf(
+                Aggregates.sample(1)
+        )).first()
+
+        return if (llama != null) {
+
+            session.close(); client.close(); eventLoopGroup.shutdownGracefully()
+
+            llama
+
+        } else {
+            getRandomLlama()
+        }
     }
 
     @JvmStatic

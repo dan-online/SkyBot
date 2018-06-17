@@ -21,7 +21,7 @@ package ml.duncte123.skybot.objects.command;
 import com.github.natanbc.reliqua.request.PendingRequest;
 import me.duncte123.botCommons.web.WebUtils;
 import ml.duncte123.skybot.Settings;
-import ml.duncte123.skybot.objects.guild.GuildSettings;
+import ml.duncte123.skybot.objects.api.GuildSettings;
 import ml.duncte123.skybot.utils.AirUtils;
 import ml.duncte123.skybot.utils.EmbedUtils;
 import ml.duncte123.skybot.utils.GuildSettingsUtils;

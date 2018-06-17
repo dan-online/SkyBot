@@ -31,10 +31,12 @@ import kotlin.reflect.KVisibility
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.javaField
 
-class WarningCodecImpl() : ApiObjectCodecImpl<Warning>(Warning::class.java, Warning())
-class KpopCodecImpl() : ApiObjectCodecImpl<KpopObject>(KpopObject::class.java, KpopObject())
+class BanObjectCodecImpl() : DBObjectCodecImpl<BanObject>(BanObject::class.java, BanObject())
+class LlamaObjectCodecImpl() : DBObjectCodecImpl<LlamaObject>(LlamaObject::class.java, LlamaObject())
+class WarningCodecImpl() : DBObjectCodecImpl<Warning>(Warning::class.java, Warning())
+class KpopCodecImpl() : DBObjectCodecImpl<KpopObject>(KpopObject::class.java, KpopObject())
 
-open class ApiObjectCodecImpl<T>(private val clazz: Class<T>, private val obj: ApiObject) : Codec<T> {
+open class DBObjectCodecImpl<T>(private val clazz: Class<T>, private val obj: DBObject) : Codec<T> {
     override fun getEncoderClass(): Class<T> = clazz
 
     override fun encode(writer: BsonWriter, value: T, encoderContext: EncoderContext) {
@@ -62,49 +64,33 @@ open class ApiObjectCodecImpl<T>(private val clazz: Class<T>, private val obj: A
         reader.readObjectId()
         var type = reader.readBsonType()
         while (type != BsonType.END_OF_DOCUMENT) {
+            val property: KProperty1<out DBObject, Any?>? = apiObject::class.memberProperties.find { it.name == reader.readName() }
+            val field = property?.javaField
+            if (field != null && !field.isAccessible) {
+                field.isAccessible = true
+            }
             when (type) {
                 BsonType.STRING -> {
-                    val property: KProperty1<out ApiObject, Any?>? = apiObject::class.memberProperties.find { it.name == reader.readName() }
-                    val field = property?.javaField
-                    field?.isAccessible = true
                     field?.set(apiObject, reader.readString())
                 }
                 BsonType.BOOLEAN -> {
-                    val property: KProperty1<out ApiObject, Any?>? = apiObject::class.memberProperties.find { it.name == reader.readName() }
-                    val field = property?.javaField
-                    field?.isAccessible = true
                     field?.set(apiObject, reader.readBoolean())
                 }
                 BsonType.INT64 -> {
-                    val property: KProperty1<out ApiObject, Any?>? = apiObject::class.memberProperties.find { it.name == reader.readName() }
-                    val field = property?.javaField
-                    field?.isAccessible = true
                     field?.set(apiObject, reader.readInt64())
                 }
                 BsonType.INT32 -> {
-                    val property: KProperty1<out ApiObject, Any?>? = apiObject::class.memberProperties.find { it.name == reader.readName() }
-                    val field = property?.javaField
-                    field?.isAccessible = true
                     field?.set(apiObject, reader.readInt32())
                 }
                 BsonType.DOUBLE -> {
-                    val property: KProperty1<out ApiObject, Any?>? = apiObject::class.memberProperties.find { it.name == reader.readName() }
-                    val field = property?.javaField
-                    field?.isAccessible = true
                     field?.set(apiObject, reader.readBoolean())
                 }
                 BsonType.DATE_TIME -> {
-                    val property: KProperty1<out ApiObject, Any?>? = apiObject::class.memberProperties.find { it.name == reader.readName() }
-                    val field = property?.javaField
-                    field?.isAccessible = true
                     val gmt = Calendar.getInstance(TimeZone.getTimeZone("GMT"))
                     gmt.timeInMillis = reader.readDateTime()
                     field?.set(apiObject, OffsetDateTime.ofInstant(gmt.toInstant(), gmt.timeZone.toZoneId()))
                 }
                 BsonType.NULL -> {
-                    val property: KProperty1<out ApiObject, Any?>? = apiObject::class.memberProperties.find { it.name == reader.readName() }
-                    val field = property?.javaField
-                    field?.isAccessible = true
                     field?.set(apiObject, reader.readNull())
                 }
                 else -> {

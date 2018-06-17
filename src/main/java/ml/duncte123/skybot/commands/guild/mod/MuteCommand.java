@@ -18,9 +18,9 @@
 
 package ml.duncte123.skybot.commands.guild.mod;
 
+import ml.duncte123.skybot.objects.api.GuildSettings;
 import ml.duncte123.skybot.objects.command.Command;
 import ml.duncte123.skybot.objects.command.CommandCategory;
-import ml.duncte123.skybot.objects.guild.GuildSettings;
 import ml.duncte123.skybot.utils.ModerationUtils;
 import net.dv8tion.jda.core.Permission;
 import net.dv8tion.jda.core.entities.Member;
@@ -54,7 +54,7 @@ public class MuteCommand extends Command {
 
         GuildSettings settings = getSettings(event.getGuild());
 
-        if (settings.getMuteRoleId() == null || settings.getMuteRoleId().isEmpty()) {
+        if (settings.getMuteRoleIdLong() == -1) {
             sendMsg(event, "No mute/spamrole is set, use `db!spamrole <Role>` to set it");
             return;
         }

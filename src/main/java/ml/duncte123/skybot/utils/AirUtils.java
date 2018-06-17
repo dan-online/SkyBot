@@ -32,12 +32,10 @@ import me.duncte123.weebJava.models.WeebApi;
 import me.duncte123.weebJava.types.TokenType;
 import ml.duncte123.skybot.CommandManager;
 import ml.duncte123.skybot.Settings;
-import ml.duncte123.skybot.connections.database.DBManager;
+import ml.duncte123.skybot.objects.api.*;
 import ml.duncte123.skybot.objects.command.custom.CustomCommand;
 import ml.duncte123.skybot.objects.command.custom.CustomCommandCodecImpl;
 import ml.duncte123.skybot.objects.discord.user.Profile;
-import ml.duncte123.skybot.objects.guild.GuildSettings;
-import ml.duncte123.skybot.objects.guild.GuildSettingsCodecImpl;
 import ml.duncte123.skybot.web.WebServer;
 import net.dv8tion.jda.core.OnlineStatus;
 import net.dv8tion.jda.core.entities.Game;
@@ -49,7 +47,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.awt.*;
-import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -63,7 +60,6 @@ public class AirUtils {
     public static final Config CONFIG = new ConfigUtils().loadConfig();
     public static final boolean NONE_SQLITE = CONFIG.getBoolean("use_database", false);
     public static final Random RAND = new Random();
-    public static final DBManager DB = new DBManager();
 
     //Generic MongoDB
 
@@ -91,7 +87,11 @@ public class AirUtils {
     public static final MongoCollection<CustomCommand> MONGO_ASYNC_CUSTOMCOMMANDS = MONGO_ASYNC_DATABASE.getCollection("customcommands",
             CustomCommand.class)
             .withCodecRegistry(CodecRegistries.fromCodecs(new CustomCommandCodecImpl()));
+    public static final MongoCollection<BanObject> MONGO_ASYNC_BANS =  AirUtils.MONGO_ASYNC_DATABASE.getCollection("bans", BanObject.class)
+            .withCodecRegistry(CodecRegistries.fromCodecs(new BanObjectCodecImpl()));
     public static final MongoCollection<Document> MONGO_ASYNC_QUOTES = MONGO_ASYNC_DATABASE.getCollection("footerquotes");
+    public static final MongoCollection<Warning> MONGO_ASYNC_WARNINGS =  AirUtils.MONGO_ASYNC_DATABASE.getCollection("warnings", Warning.class)
+            .withCodecRegistry(CodecRegistries.fromCodecs(new WarningCodecImpl()));
 
     public static final CommandManager COMMAND_MANAGER = new CommandManager();
     public static final WeebApi WEEB_API = new WeebApiBuilder(TokenType.WOLKETOKENS)
@@ -103,7 +103,7 @@ public class AirUtils {
     public static final WAEngine ALPHA_ENGINE = getWolframEngine();
     public static final WebServer WEB_SERVER = new WebServer();
     private static final Logger logger = LoggerFactory.getLogger(AirUtils.class);
-    protected static Map<String, GuildSettings> guildSettings = new HashMap<>();
+    protected static Map<Long, GuildSettings> guildSettings = new HashMap<>();
 
     /**
      * This converts the online status of a user to a fancy emote
@@ -246,11 +246,7 @@ public class AirUtils {
      * Stops everything
      */
     public static void stop() {
-        try {
-            DB.getConnManager().getConnection().close();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+        MONGO_ASYNC_CLIENT.close();
         try {
             AudioUtils.ins.musicManagers.forEach((a, b) -> {
                 if (b.player.getPlayingTrack() != null)
@@ -258,7 +254,6 @@ public class AirUtils {
             });
         } catch (java.util.ConcurrentModificationException ignored) {
         }
-        DB.getService().shutdown();
     }
 
     /**
@@ -282,6 +277,11 @@ public class AirUtils {
         }
 
         return tc;
+    }
+    public static TextChannel getLogChannel(long channelId, Guild guild) {
+        if (channelId == -1) return GuildUtils.getPublicChannel(guild);
+
+        return guild.getTextChannelById(channelId);
     }
 
     /**

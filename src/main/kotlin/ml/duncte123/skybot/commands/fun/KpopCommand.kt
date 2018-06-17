@@ -42,7 +42,7 @@ class KpopCommand : Command() {
                     .setDescription("Here is a kpop member from the group ${member.band}")
                     .addField("Name of the member", member.name, false)
                     .setImage(member.image)
-                    .setFooter("Query id: ${member.id}", Settings.DEFAULT_ICON)
+                    .setFooter("", Settings.DEFAULT_ICON)
             MessageUtils.sendEmbed(event, eb.build())
         } catch (ignored: SQLException) {
             MessageUtils.sendMsg(event, "Nothing found")

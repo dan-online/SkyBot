@@ -18,9 +18,9 @@
 
 package ml.duncte123.skybot.commands.guild.owner;
 
+import ml.duncte123.skybot.objects.api.GuildSettings;
 import ml.duncte123.skybot.objects.command.Command;
 import ml.duncte123.skybot.objects.command.CommandCategory;
-import ml.duncte123.skybot.objects.guild.GuildSettings;
 import ml.duncte123.skybot.utils.AirUtils;
 import ml.duncte123.skybot.utils.EmbedUtils;
 import ml.duncte123.skybot.utils.GuildSettingsUtils;

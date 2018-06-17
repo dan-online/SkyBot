@@ -22,7 +22,7 @@ import com.mongodb.MongoCommandException;
 import com.mongodb.async.SingleResultCallback;
 import com.mongodb.async.client.MongoCollection;
 import com.mongodb.client.result.DeleteResult;
-import ml.duncte123.skybot.objects.guild.GuildSettings;
+import ml.duncte123.skybot.objects.api.GuildSettings;
 import net.dv8tion.jda.core.entities.Guild;
 import org.bson.Document;
 import org.slf4j.Logger;
@@ -75,7 +75,7 @@ public class GuildSettingsUtils {
         AirUtils.MONGO_ASYNC_CLIENT.startSession((session, sessionException) -> {
             if (sessionException != null) {
                 logger.error("Aborting! Sessions are denied by the database.", sessionException);
-                System.exit(-2);
+                return;
             }
 
             AirUtils.MONGO_ASYNC_QUOTES.find(session)
@@ -94,7 +94,7 @@ public class GuildSettingsUtils {
         AirUtils.MONGO_ASYNC_CLIENT.startSession((session, sessionException) -> {
             if (sessionException != null) {
                 logger.error("Aborting! Sessions are denied by the database.", sessionException);
-                System.exit(-2);
+                return;
             }
 
             AirUtils.MONGO_ASYNC_GUILDSETTINGS.find(session)
@@ -133,7 +133,8 @@ public class GuildSettingsUtils {
         }
         AirUtils.MONGO_ASYNC_CLIENT.startSession((session, sessionException) -> {
             if (sessionException != null) {
-                sessionException.printStackTrace();
+                logger.error("Aborting! Sessions are denied by the database.", sessionException);
+                return;
             }
 
             MongoCollection<GuildSettings> settingsCollection = AirUtils.MONGO_ASYNC_GUILDSETTINGS;
@@ -151,14 +152,15 @@ public class GuildSettingsUtils {
      * @return The new guild
      */
     public static GuildSettings registerNewGuild(Guild g) {
-        if (AirUtils.guildSettings.containsKey(g.getId())) {
-            return AirUtils.guildSettings.get(g.getId());
+        if (AirUtils.guildSettings.containsKey(g.getIdLong())) {
+            return AirUtils.guildSettings.get(g.getIdLong());
         }
-        GuildSettings newGuildSettings = new GuildSettings(g.getId());
+        GuildSettings newGuildSettings = new GuildSettings(g.getIdLong());
 
         AirUtils.MONGO_ASYNC_CLIENT.startSession((session, sessionException) -> {
             if (sessionException != null) {
-                sessionException.printStackTrace();
+                logger.error("Aborting! Sessions are denied by the database.", sessionException);
+                return;
             }
 
             MongoCollection<GuildSettings> settingsCollection = AirUtils.MONGO_ASYNC_GUILDSETTINGS;
@@ -179,7 +181,8 @@ public class GuildSettingsUtils {
         AirUtils.guildSettings.remove(g.getId());
         AirUtils.MONGO_ASYNC_CLIENT.startSession((session, sessionException) -> {
             if (sessionException != null) {
-                sessionException.printStackTrace();
+                logger.error("Aborting! Sessions are denied by the database.", sessionException);
+                return;
             }
 
             MongoCollection<GuildSettings> settingsCollection = AirUtils.MONGO_ASYNC_GUILDSETTINGS;

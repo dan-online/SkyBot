@@ -28,13 +28,12 @@ import net.dv8tion.jda.core.entities.User;
 import net.dv8tion.jda.core.events.message.guild.GuildMessageReceivedEvent;
 import net.dv8tion.jda.core.exceptions.HierarchyException;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.time.DateUtils;
 
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
+import java.time.OffsetDateTime;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class BanCommand extends Command {
 
@@ -52,7 +51,8 @@ public class BanCommand extends Command {
         }
 
         if (event.getMessage().getMentionedUsers().size() < 1 || args.length < 2) {
-            MessageUtils.sendMsg(event, "Usage is " + PREFIX + getName() + " <@user> [<time><m/h/d/w/M/Y>] <Reason>");
+            MessageUtils.sendMsg(event, "Usage is " + PREFIX + getName() + " <@user> [<time><m/h/d/w/M/Y>] <Reason>. You can use " +
+                    "https://regex101.com/r/NJhfoQ/1 for testing. Just insert your time in the \"Test String\" selection.");
             return;
         }
 
@@ -79,20 +79,12 @@ public class BanCommand extends Command {
                     return;
                 }
 
-                CalculateBanTime calculateBanTime = new CalculateBanTime(event, timeParts).invoke();
-                if (calculateBanTime.is()) return;
-                String finalUnbanDate = calculateBanTime.getFinalUnbanDate();
-                int finalBanTime = calculateBanTime.getFinalBanTime();
+                ConversionUtil conversion = new ConversionUtil(StringUtils.join(timeParts, ""));
                 event.getGuild().getController().ban(toBan.getId(), 1, reason).queue(
                         (voidMethod) -> {
-                            if (finalBanTime > 0) {
-                                ModerationUtils.addBannedUserToDb(event.getAuthor().getId(), toBan.getName(), toBan.getDiscriminator(), toBan.getId(), finalUnbanDate, event.getGuild().getId());
-
-                                ModerationUtils.modLog(event.getAuthor(), toBan, "banned", reason, args[1], event.getGuild());
-                            } else {
-                                final String newReason = StringUtils.join(Arrays.copyOfRange(args, 1, args.length), " ");
-                                ModerationUtils.modLog(event.getAuthor(), toBan, "banned", newReason, event.getGuild());
-                            }
+                            ModerationUtils.addBannedUserToDb(event.getAuthor().getIdLong(), toBan.getName(), toBan.getDiscriminator(),
+                                    toBan.getIdLong(), conversion.unbanDate, event.getGuild().getIdLong());
+                            ModerationUtils.modLog(event.getAuthor(), toBan, "banned", reason, args[1], event.getGuild());
                         }
                 );
                 MessageUtils.sendSuccess(event.getMessage());
@@ -118,91 +110,46 @@ public class BanCommand extends Command {
         return "ban";
     }
 
-    private class CalculateBanTime {
-        private boolean myResult;
-        private GuildMessageReceivedEvent event;
-        private String[] timeParts;
-        private String finalUnbanDate;
-        private int finalBanTime;
+    private class ConversionUtil {
+        private OffsetDateTime unbanDate;
+        private final Pattern timeRegex =
+                Pattern.compile("(\\d+)((?:y(?:ear(?:s)?)?)|(?:mon(?:th(?:s)?)?)|(?:w(?:eek(?:s)?)?)|(?:d(?:ay(?:s)?)?)|(?:h(?:our(?:s)?)?)|(?:m" +
+                        "(?:in(?:ute(?:s)?)?)?)|(?:s(?:ec(?:ond(?:s)?)?)?))");
 
-        CalculateBanTime(GuildMessageReceivedEvent event, String... timeParts) {
-            this.event = event;
-            this.timeParts = timeParts;
-        }
+        ConversionUtil(String input) {
+            Matcher matcher = timeRegex.matcher(input);
+            OffsetDateTime temp = OffsetDateTime.now();
 
-        boolean is() {
-            return myResult;
-        }
-
-        String getFinalUnbanDate() {
-            return finalUnbanDate;
-        }
-
-        int getFinalBanTime() {
-            return finalBanTime;
-        }
-
-        public CalculateBanTime invoke() {
-            String unbanDate = "";
-            int banTime; // initial value is always 0
-            try {
-                banTime = Integer.parseInt(timeParts[0]);
-            } catch (NumberFormatException e) {
-                MessageUtils.sendMsg(event, e.getMessage() + " is not a valid number");
-                myResult = true;
-                return this;
-            } catch (ArrayIndexOutOfBoundsException ignored /* https://youtube.com/DSHelmondGames */) {
-                MessageUtils.sendMsg(event, "Incorrect time format, use `" + PREFIX + "help " + getName() + "` for more info.");
-                myResult = true;
-                return this;
-            }
-            if (banTime > 0) {
-                if (timeParts.length != 2) {
-                    MessageUtils.sendMsg(event, "Incorrect time format, use `" + PREFIX + "help " + getName() + "` for more info.");
-                    myResult = true;
-                    return this;
+            while (matcher.find()) {
+                String[] parts = matcher.group(0).split("", 2);
+                long number = Long.parseLong(parts[0]);
+                String unit = parts[1];
+                switch (unit) {
+                    case "y": case "year": case "years":
+                        temp = temp.plusYears(number);
+                        break;
+                    case "mon": case "month": case "months":
+                        temp = temp.plusMonths(number);
+                        break;
+                    case "w": case "week": case "weeks":
+                        temp = temp.plusWeeks(number);
+                        break;
+                    case "d": case "day": case "days":
+                        temp = temp.plusDays(number);
+                        break;
+                    case "h": case "hour": case "hours":
+                        temp = temp.plusHours(number);
+                        break;
+                    case "m": case "min": case "minute": case "minutes":
+                        temp = temp.plusMinutes(number);
+                        break;
+                    case "s": case "sec": case "second": case "seconds":
+                        temp = temp.plusSeconds(number);
+                        break;
                 }
-
-                DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                Date dt = new Date(System.currentTimeMillis());
-
-                switch (timeParts[1]) {
-                    case "m":
-                        if (Integer.parseInt(timeParts[0]) < 10) {
-                            MessageUtils.sendMsg(event, "The minimum time for minutes is 10.");
-                            myResult = true;
-                            return this;
-                        }
-                        dt = DateUtils.addMinutes(dt, banTime);
-                        break;
-                    case "h":
-                        dt = DateUtils.addHours(dt, banTime);
-                        break;
-                    case "d":
-                        dt = DateUtils.addDays(dt, banTime);
-                        break;
-                    case "w":
-                        dt = DateUtils.addWeeks(dt, banTime);
-                        break;
-                    case "M":
-                        dt = DateUtils.addMonths(dt, banTime);
-                        break;
-                    case "Y":
-                        dt = DateUtils.addYears(dt, banTime);
-                        break;
-
-                    default:
-                        MessageUtils.sendMsg(event, timeParts[1] + " is not defined, please choose from m, d, h, w, M or Y");
-                        myResult = true;
-                        return this;
-                }
-                unbanDate = df.format(dt);
             }
 
-            finalUnbanDate = unbanDate.isEmpty() ? "" : unbanDate;
-            finalBanTime = banTime;
-            myResult = false;
-            return this;
+            this.unbanDate = temp;
         }
     }
 }

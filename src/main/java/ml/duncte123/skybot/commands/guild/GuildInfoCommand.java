@@ -18,8 +18,8 @@
 
 package ml.duncte123.skybot.commands.guild;
 
+import ml.duncte123.skybot.objects.api.GuildSettings;
 import ml.duncte123.skybot.objects.command.Command;
-import ml.duncte123.skybot.objects.guild.GuildSettings;
 import ml.duncte123.skybot.utils.EmbedUtils;
 import ml.duncte123.skybot.utils.GuildSettingsUtils;
 import ml.duncte123.skybot.utils.GuildUtils;
@@ -86,7 +86,7 @@ public class GuildInfoCommand extends Command {
         double[] ratio = GuildUtils.getBotRatio(g);
         EmbedBuilder eb = EmbedUtils.defaultEmbed();
         GuildSettings settings = GuildSettingsUtils.getGuild(g);
-        if (settings.getServerDesc() != null && !"".equals(settings.getServerDesc())) {
+        if (!settings.getServerDesc().equals("")) {
             eb.addField("Server Description", settings.getServerDesc() + "\n", false);
         }
         eb.setThumbnail(event.getGuild().getIconUrl() != null ? event.getGuild().getIconUrl() : "https://i.duncte123.ml/blob/b1nzyblob.png")

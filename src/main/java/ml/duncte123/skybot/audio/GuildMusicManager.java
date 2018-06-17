@@ -20,7 +20,7 @@ package ml.duncte123.skybot.audio;
 
 import fredboat.audio.player.LavalinkManager;
 import lavalink.client.player.IPlayer;
-import ml.duncte123.skybot.objects.guild.GuildSettings;
+import ml.duncte123.skybot.objects.api.GuildSettings;
 import ml.duncte123.skybot.utils.GuildSettingsUtils;
 import net.dv8tion.jda.core.entities.Guild;
 import net.dv8tion.jda.core.entities.TextChannel;
