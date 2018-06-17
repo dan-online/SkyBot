@@ -507,7 +507,7 @@ public class BotListener extends ListenerAdapter {
             return "NOPE";
 
         Guild guild = event.getGuild();
-        String autoRoleId = GuildSettingsUtils.getGuild(guild).getAutoroleRole();
+        long autoRoleId = GuildSettingsUtils.getGuild(guild).getAutoroleRoleLong();
 
         return message.replaceAll("\\{\\{USER_MENTION}}", event.getUser().getAsMention())
                 .replaceAll("\\{\\{USER_NAME}}", event.getUser().getName())
@@ -517,7 +517,7 @@ public class BotListener extends ListenerAdapter {
                 .replaceAll("\\{\\{GUILD_USER_COUNT}}", guild.getMemberCache().size() + "")
 
                 //This one can be kept a secret :P
-                .replaceAll("\\{\\{AUTO_ROLE_NAME}", autoRoleId == null || autoRoleId.isEmpty() ?
+                .replaceAll("\\{\\{AUTO_ROLE_NAME}", autoRoleId == -1 ?
                         "Not set" : guild.getRoleById(autoRoleId).getName())
                 .replaceAll("\\{\\{EVENT_TYPE}}", event instanceof GuildMemberJoinEvent ? "joined" : "left");
     }

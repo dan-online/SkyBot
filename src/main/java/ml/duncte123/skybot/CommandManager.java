@@ -138,53 +138,43 @@ public class CommandManager {
 
 
         if (insertInDb) {
-
-            AirUtils.MONGO_ASYNC_CLIENT.startSession((session, sessionException) -> {
-                if (sessionException != null) {
-                    logger.error("Aborting! Sessions are denied by the database.", sessionException);
-                    System.exit(-2);
-                }
-
-                if (isEdit) {
-                    AirUtils.MONGO_ASYNC_CUSTOMCOMMANDS.updateOne(session,
-                        Filters.and(
-                                Filters.eq("invoke", command.getName()),
-                                Filters.eq("guildId", Long.parseLong(command.getGuildId()))),
-                        new Document("message", command.getMessage()),
-                        (result, exception) -> {
-                            if (exception != null) {
-                                if (message != null)
-                                MessageUtils.sendErrorWithMessage(message, "Either the command was removed or an database error appeared.\n" +
-                                        "Try to contact the developers if you spot an database error.");
-                                exception.printStackTrace();
-                            }
-                            if (result != null) {
-                                this.customCommands.remove(getCustomCommand(command.getName(), command.getGuildId()));
-                                this.customCommands.add(command);
-                                if (message != null)
-                                MessageUtils.sendSuccess(message);
-                            }
-                    });
-                } else {
-                    AirUtils.MONGO_ASYNC_CUSTOMCOMMANDS.insertOne(session, command,
-                        (result, exception) -> {
-                            if (exception != null) {
-                                if (message != null)
-                                MessageUtils.sendErrorWithMessage(message, "Either the command was already added, limit reached or an database " +
-                                        "error appeared.\n" +
-                                        "Try to contact the developers if you spot an database error.");
-                                exception.printStackTrace();
-                            }
-                            if (result != null) {
-                                this.customCommands.add(command);
-                                if (message != null)
-                                MessageUtils.sendSuccess(message);
-                            }
-                        });
-                }
-
-                session.close();
-            });
+            if (isEdit) {
+                AirUtils.MONGO_ASYNC_CUSTOMCOMMANDS.updateOne(
+                    Filters.and(
+                            Filters.eq("invoke", command.getName()),
+                            Filters.eq("guildId", Long.parseLong(command.getGuildId()))),
+                    new Document("message", command.getMessage()),
+                    (result, exception) -> {
+                        if (exception != null) {
+                            if (message != null)
+                            MessageUtils.sendErrorWithMessage(message, "Either the command was removed or an database error appeared.\n" +
+                                    "Try to contact the developers if you spot an database error.");
+                            exception.printStackTrace();
+                        }
+                        if (result != null) {
+                            this.customCommands.remove(getCustomCommand(command.getName(), command.getGuildId()));
+                            this.customCommands.add(command);
+                            if (message != null)
+                            MessageUtils.sendSuccess(message);
+                        }
+                });
+            } else {
+                AirUtils.MONGO_ASYNC_CUSTOMCOMMANDS.insertOne(command,
+                    (result, exception) -> {
+                        if (exception != null) {
+                            if (message != null)
+                            MessageUtils.sendErrorWithMessage(message, "Either the command was already added, limit reached or an database " +
+                                    "error appeared.\n" +
+                                    "Try to contact the developers if you spot an database error.");
+                            exception.printStackTrace();
+                        }
+                        if (result != null) {
+                            this.customCommands.add(command);
+                            if (message != null)
+                            MessageUtils.sendSuccess(message);
+                        }
+                });
+            }
         }
     }
 
@@ -204,24 +194,18 @@ public class CommandManager {
         if (cmd == null) {
             MessageUtils.sendErrorWithMessage(message, String.format("The command with name %s does not exist here!", name));
         }
-        AirUtils.MONGO_ASYNC_CLIENT.startSession((session, sessionException) -> {
-            if (sessionException != null) {
-                logger.error("Aborting! Sessions are denied by the database.", sessionException);
-                System.exit(-2);
+
+        AirUtils.MONGO_ASYNC_CUSTOMCOMMANDS.deleteOne(Filters.and(Filters.eq("invoke", name), Filters.eq("guildId", Long.parseLong
+                (guildId))), (result, exception) -> {
+            if (exception != null) {
+                MessageUtils.sendErrorWithMessage(message, "Either the command was removed or an database error appeared.\n" +
+                        "Try to contact the developers if you spot an database error.");
+                exception.printStackTrace();
             }
-            AirUtils.MONGO_ASYNC_CUSTOMCOMMANDS.deleteOne(session, Filters.and(Filters.eq("invoke", name), Filters.eq("guildId", Long.parseLong
-                    (guildId))), (result, exception) -> {
-                if (exception != null) {
-                    MessageUtils.sendErrorWithMessage(message, "Either the command was removed or an database error appeared.\n" +
-                            "Try to contact the developers if you spot an database error.");
-                    exception.printStackTrace();
-                }
-                if (result != null) {
-                    this.customCommands.remove(cmd);
-                    MessageUtils.sendSuccess(message);
-                }
-            });
-            session.close();
+            if (result != null) {
+                this.customCommands.remove(cmd);
+                MessageUtils.sendSuccess(message);
+            }
         });
     }
 
@@ -298,16 +282,7 @@ public class CommandManager {
     }
 
     private void loadCustomCommands() {
-        AirUtils.MONGO_ASYNC_CLIENT.startSession((session, sessionException) -> {
-            if (sessionException != null) {
-                logger.error("Aborting! Sessions are denied by the database.", sessionException);
-                System.exit(-2);
-            }
-
-            AirUtils.MONGO_ASYNC_CUSTOMCOMMANDS.find(session)
-                    .forEach((command) -> addCustomCommand(null, command, false, false), GuildSettingsUtils.DEFAULT_VOID_CALLBACK);
-
-            session.close();
-        });
+        AirUtils.MONGO_ASYNC_CUSTOMCOMMANDS.find()
+                .forEach((command) -> addCustomCommand(null, command, false, false), GuildSettingsUtils.DEFAULT_VOID_CALLBACK);
     }
 }

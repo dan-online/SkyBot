@@ -37,6 +37,9 @@ class WarningCodecImpl() : DBObjectCodecImpl<Warning>(Warning::class.java, Warni
 class KpopCodecImpl() : DBObjectCodecImpl<KpopObject>(KpopObject::class.java, KpopObject())
 
 open class DBObjectCodecImpl<T>(private val clazz: Class<T>, private val obj: DBObject) : Codec<T> {
+
+    private var index = 1
+
     override fun getEncoderClass(): Class<T> = clazz
 
     override fun encode(writer: BsonWriter, value: T, encoderContext: EncoderContext) {
@@ -60,46 +63,54 @@ open class DBObjectCodecImpl<T>(private val clazz: Class<T>, private val obj: DB
     @Suppress("UNCHECKED_CAST")
     override fun decode(reader: BsonReader, decoderContext: DecoderContext): T {
         val apiObject = obj
-        reader.readStartDocument()
-        reader.readObjectId()
-        var type = reader.readBsonType()
-        while (type != BsonType.END_OF_DOCUMENT) {
-            val property: KProperty1<out DBObject, Any?>? = apiObject::class.memberProperties.find { it.name == reader.readName() }
-            val field = property?.javaField
-            if (field != null && !field.isAccessible) {
-                field.isAccessible = true
+        try {
+            reader.readStartDocument()
+            reader.readObjectId()
+            var type = reader.readBsonType()
+            while (type != BsonType.END_OF_DOCUMENT) {
+                val property: KProperty1<out DBObject, Any?>? = apiObject::class.memberProperties.find { it.name == reader.readName() }
+                val field = property?.javaField
+                if (field != null && !field.isAccessible) {
+                    field.isAccessible = true
+                }
+                when (type) {
+                    BsonType.STRING -> {
+                        field?.set(apiObject, reader.readString())
+                    }
+                    BsonType.BOOLEAN -> {
+                        field?.set(apiObject, reader.readBoolean())
+                    }
+                    BsonType.INT64 -> {
+                        field?.set(apiObject, reader.readInt64())
+                    }
+                    BsonType.INT32 -> {
+                        field?.set(apiObject, reader.readInt32())
+                    }
+                    BsonType.DOUBLE -> {
+                        field?.set(apiObject, reader.readBoolean())
+                    }
+                    BsonType.DATE_TIME -> {
+                        val gmt = Calendar.getInstance(TimeZone.getTimeZone("GMT"))
+                        gmt.timeInMillis = reader.readDateTime()
+                        field?.set(apiObject, OffsetDateTime.ofInstant(gmt.toInstant(), gmt.timeZone.toZoneId()))
+                    }
+                    BsonType.NULL -> {
+                        field?.set(apiObject, reader.readNull())
+                    }
+                    else -> {
+                    }
+                }
+                type = reader.readBsonType()
             }
-            when (type) {
-                BsonType.STRING -> {
-                    field?.set(apiObject, reader.readString())
-                }
-                BsonType.BOOLEAN -> {
-                    field?.set(apiObject, reader.readBoolean())
-                }
-                BsonType.INT64 -> {
-                    field?.set(apiObject, reader.readInt64())
-                }
-                BsonType.INT32 -> {
-                    field?.set(apiObject, reader.readInt32())
-                }
-                BsonType.DOUBLE -> {
-                    field?.set(apiObject, reader.readBoolean())
-                }
-                BsonType.DATE_TIME -> {
-                    val gmt = Calendar.getInstance(TimeZone.getTimeZone("GMT"))
-                    gmt.timeInMillis = reader.readDateTime()
-                    field?.set(apiObject, OffsetDateTime.ofInstant(gmt.toInstant(), gmt.timeZone.toZoneId()))
-                }
-                BsonType.NULL -> {
-                    field?.set(apiObject, reader.readNull())
-                }
-                else -> {
-                }
-            }
-            type = reader.readBsonType()
+
+            reader.readEndDocument()
+        } catch (ex: Exception) {
+            ex.printStackTrace()
+
+            System.err.println("\n=========\nAt index $index!\n==========\n")
         }
 
-        reader.readEndDocument()
+        index += 1
 
         return apiObject as T
     }

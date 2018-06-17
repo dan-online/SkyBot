@@ -25,6 +25,7 @@ import org.bson.codecs.DecoderContext
 import org.bson.codecs.EncoderContext
 
 class GuildSettingsCodecImpl : Codec<GuildSettings> {
+    private var index = 1;
     override fun getEncoderClass(): Class<GuildSettings> = GuildSettings::class.java
 
     override fun encode(writer: BsonWriter, value: GuildSettings, encoderContext: EncoderContext) {
@@ -55,38 +56,48 @@ class GuildSettingsCodecImpl : Codec<GuildSettings> {
     }
 
     override fun decode(reader: BsonReader, decoderContext: DecoderContext): GuildSettings {
+
         reader.readStartDocument()
         reader.readObjectId("_id")
 
         val setting = GuildSettings(reader.readInt64("guildId"))
-                .setCustomPrefix(reader.readString("prefix"))
-                .setAutoroleRole(reader.readInt64("autoRole"))
-                .setMuteRoleId(reader.readInt64("muteRoleId"))
 
-        val rates = arrayListOf<Long>()
+        try {
+            setting.setCustomPrefix(reader.readString("prefix"))
+                    .setAutoroleRole(reader.readInt64("autoRole"))
+                    .setMuteRoleId(reader.readInt64("muteRoleId"))
 
-        reader.readStartArray()
+            val rates = arrayListOf<Long>()
 
-        for (i in 0 until 6)
-            rates.add(reader.readInt64())
+            reader.readStartArray()
 
-        reader.readEndArray()
+            for (i in 0 until 6)
+                rates.add(reader.readInt64())
 
-        setting.setRatelimits(rates.toLongArray())
-        .setAutoDeHoist(reader.readBoolean("autoDehoist"))
-                .setEnableJoinMessage(reader.readBoolean("joinMessage"))
-                .setEnableSwearFilter(reader.readBoolean("swearFilter"))
-                .setLogChannel(reader.readInt64("logChannelId"))
-                .setFilterInvites(reader.readBoolean("filterInvites"))
-                .setSpamFilterState(reader.readBoolean("spamFilterState"))
-                .setKickState(reader.readBoolean("kickInsteadState"))
-                .setAnnounceTracks(reader.readBoolean("announceNextTrack"))
-                .setServerDesc(reader.readString("serverDescription"))
-                .setCustomLeaveMessage(reader.readString("customLeaveMessage"))
-                .setWelcomeLeaveChannel(reader.readInt64("welcomeLeaveChannel"))
-                .setCustomJoinMessage(reader.readString("customWelcomeMessage"))
+            reader.readEndArray()
 
-        reader.readEndDocument()
+            setting.setRatelimits(rates.toLongArray())
+                    .setAutoDeHoist(reader.readBoolean("autoDehoist"))
+                    .setEnableJoinMessage(reader.readBoolean("joinMessage"))
+                    .setEnableSwearFilter(reader.readBoolean("swearFilter"))
+                    .setLogChannel(reader.readInt64("logChannelId"))
+                    .setFilterInvites(reader.readBoolean("filterInvites"))
+                    .setSpamFilterState(reader.readBoolean("spamFilterState"))
+                    .setKickState(reader.readBoolean("kickInsteadState"))
+                    .setAnnounceTracks(reader.readBoolean("announceNextTrack"))
+                    .setServerDesc(reader.readString("serverDescription"))
+                    .setCustomLeaveMessage(reader.readString("customLeaveMessage"))
+                    .setWelcomeLeaveChannel(reader.readInt64("welcomeLeaveChannel"))
+                    .setCustomJoinMessage(reader.readString("customWelcomeMessage"))
+
+            reader.readEndDocument()
+        } catch (ex: Exception) {
+            ex.printStackTrace()
+
+            System.err.println("\n=========\nAt index $index!\n==========\n")
+        }
+
+        index += 1
 
         return setting
     }

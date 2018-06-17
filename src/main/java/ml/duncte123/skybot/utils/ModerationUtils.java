@@ -104,13 +104,8 @@ public class ModerationUtils {
      * @param guildId           What guild the user got banned in
      */
     public static void addBannedUserToDb(long modID, String userName, String userDiscriminator, long userId, OffsetDateTime unbanDate, long guildId) {
-
-        AirUtils.MONGO_ASYNC_CLIENT.startSession((session, sessionException) -> {
-            AirUtils.MONGO_ASYNC_BANS.insertOne(session, new BanObject(OffsetDateTime.now(), unbanDate, userName, modID, userId, guildId,
-                    userDiscriminator), GuildSettingsUtils.DEFAULT_VOID_CALLBACK);
-
-            session.close();
-        });
+        AirUtils.MONGO_ASYNC_BANS.insertOne(new BanObject(OffsetDateTime.now(), unbanDate, userName, modID, userId, guildId,
+                userDiscriminator), GuildSettingsUtils.DEFAULT_VOID_CALLBACK);
     }
 
     /**
@@ -135,20 +130,10 @@ public class ModerationUtils {
      * @param jda       a jda instance because we need the token for auth
      */
     public static void addWarningToDb(User moderator, User target, String reason, Guild guild, JDA jda) {
-
-        AirUtils.MONGO_ASYNC_CLIENT.startSession((session, sessionExxception) -> {
-            if (sessionExxception != null) {
-                sessionExxception.printStackTrace();
-                return;
-            }
-
             OffsetDateTime now = OffsetDateTime.now();
 
-            AirUtils.MONGO_ASYNC_WARNINGS.insertOne(session, new Warning(reason, now, moderator.getIdLong(), now.plusDays(3), target.getIdLong(),
+            AirUtils.MONGO_ASYNC_WARNINGS.insertOne(new Warning(reason, now, moderator.getIdLong(), now.plusDays(3), target.getIdLong(),
                     guild.getIdLong()), GuildSettingsUtils.DEFAULT_VOID_CALLBACK);
-
-            session.close();
-        });
     }
 
     /**
@@ -157,32 +142,22 @@ public class ModerationUtils {
      * @param shardManager the current shard manager for this bot
      */
     public static void checkUnbans(ShardManager shardManager) {
-
-        AirUtils.MONGO_ASYNC_CLIENT.startSession((session, sessionException) -> {
-            if (sessionException != null) {
-                logger.error("Aborting! Sessions are denied by the database.", sessionException);
-                return;
+        AirUtils.MONGO_ASYNC_BANS.find(Filters.lt("unban_date", OffsetDateTime.now().toEpochSecond())).forEach((ban) -> {
+            logger.debug("Unbanning {}", ban.getUsername());
+            Guild guild = shardManager.getGuildById(ban.getGuildId());
+            if (guild != null) {
+                String userId = Long.toUnsignedString(ban.getUserId());
+                guild.getController().unban(userId).queue();
+                modLog(new ConsoleUser(), new FakeUser(ban.getUsername(), userId, ban.getDiscriminator()), "unbanned", guild);
             }
-
-            AirUtils.MONGO_ASYNC_BANS.find(session, Filters.lt("unban_date", OffsetDateTime.now().toEpochSecond())).forEach((ban) -> {
-                logger.debug("Unbanning {}", ban.getUsername());
-                Guild guild = shardManager.getGuildById(ban.getGuildId());
-                if (guild != null) {
-                    String userId = Long.toUnsignedString(ban.getUserId());
-                    guild.getController().unban(userId).queue();
-                    modLog(new ConsoleUser(), new FakeUser(ban.getUsername(), userId, ban.getDiscriminator()), "unbanned", guild);
-                }
-            }, GuildSettingsUtils.DEFAULT_VOID_CALLBACK);
-            AirUtils.MONGO_ASYNC_BANS.deleteMany(session, Filters.lt("unban_date", OffsetDateTime.now().toEpochSecond()), ((result, t) -> {
-                if (t != null) {
-                    t.printStackTrace();
-                }
-                if (result != null)
-                    logger.debug("Checking done, unbanned {} users.", result.getDeletedCount());
-            }));
-
-            session.close();
-        });
+        }, GuildSettingsUtils.DEFAULT_VOID_CALLBACK);
+        AirUtils.MONGO_ASYNC_BANS.deleteMany(Filters.lt("unban_date", OffsetDateTime.now().toEpochSecond()), ((result, t) -> {
+            if (t != null) {
+                t.printStackTrace();
+            }
+            if (result != null)
+                logger.debug("Checking done, unbanned {} users.", result.getDeletedCount());
+        }));
     }
 
     public static void muteUser(Guild guild, Member member, TextChannel channel, String cause, long minutesUntilUnMute) {

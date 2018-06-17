@@ -72,17 +72,8 @@ public class GuildSettingsUtils {
         if (!AirUtils.NONE_SQLITE) return;
         logger.debug("Loading footer quotes");
 
-        AirUtils.MONGO_ASYNC_CLIENT.startSession((session, sessionException) -> {
-            if (sessionException != null) {
-                logger.error("Aborting! Sessions are denied by the database.", sessionException);
-                return;
-            }
-
-            AirUtils.MONGO_ASYNC_QUOTES.find(session)
-                    .forEach((quote) -> EmbedUtils.footerQuotes.put(quote.getString("quote"), quote.getString("name")), DEFAULT_VOID_CALLBACK);
-
-            session.close();
-        });
+        AirUtils.MONGO_ASYNC_QUOTES.find()
+                .forEach((quote) -> EmbedUtils.footerQuotes.put(quote.getString("quote"), quote.getString("name")), DEFAULT_VOID_CALLBACK);
     }
 
     /**
@@ -91,17 +82,8 @@ public class GuildSettingsUtils {
     private static void loadGuildSettings() {
         logger.debug("Loading Guild settings.");
 
-        AirUtils.MONGO_ASYNC_CLIENT.startSession((session, sessionException) -> {
-            if (sessionException != null) {
-                logger.error("Aborting! Sessions are denied by the database.", sessionException);
-                return;
-            }
-
-            AirUtils.MONGO_ASYNC_GUILDSETTINGS.find(session)
-                    .forEach((guildSetting) -> AirUtils.guildSettings.put(guildSetting.getGuildId(), guildSetting), DEFAULT_VOID_CALLBACK);
-
-            session.close();
-        });
+        AirUtils.MONGO_ASYNC_GUILDSETTINGS.find()
+                .forEach((guildSetting) -> AirUtils.guildSettings.put(guildSetting.getGuildId(), guildSetting), DEFAULT_VOID_CALLBACK);
     }
 
     /**
@@ -131,18 +113,9 @@ public class GuildSettingsUtils {
             registerNewGuild(guild);
             return;
         }
-        AirUtils.MONGO_ASYNC_CLIENT.startSession((session, sessionException) -> {
-            if (sessionException != null) {
-                logger.error("Aborting! Sessions are denied by the database.", sessionException);
-                return;
-            }
-
-            MongoCollection<GuildSettings> settingsCollection = AirUtils.MONGO_ASYNC_GUILDSETTINGS;
-            settingsCollection.deleteOne(session, new Document("guildId", guild.getIdLong()), (SingleResultCallback<DeleteResult>) DEFAULT_OBJECT_CALLBACK);
-            settingsCollection.insertOne(session, settings, DEFAULT_VOID_CALLBACK);
-
-            session.close();
-        });
+        MongoCollection<GuildSettings> settingsCollection = AirUtils.MONGO_ASYNC_GUILDSETTINGS;
+        settingsCollection.deleteOne(new Document("guildId", guild.getIdLong()), (SingleResultCallback<DeleteResult>) DEFAULT_OBJECT_CALLBACK);
+        settingsCollection.insertOne(settings, DEFAULT_VOID_CALLBACK);
     }
 
     /**
@@ -157,17 +130,8 @@ public class GuildSettingsUtils {
         }
         GuildSettings newGuildSettings = new GuildSettings(g.getIdLong());
 
-        AirUtils.MONGO_ASYNC_CLIENT.startSession((session, sessionException) -> {
-            if (sessionException != null) {
-                logger.error("Aborting! Sessions are denied by the database.", sessionException);
-                return;
-            }
-
-            MongoCollection<GuildSettings> settingsCollection = AirUtils.MONGO_ASYNC_GUILDSETTINGS;
-            settingsCollection.insertOne(session, newGuildSettings, DEFAULT_VOID_CALLBACK);
-
-            session.close();
-        });
+        MongoCollection<GuildSettings> settingsCollection = AirUtils.MONGO_ASYNC_GUILDSETTINGS;
+        settingsCollection.insertOne(newGuildSettings, DEFAULT_VOID_CALLBACK);
 
         return newGuildSettings;
     }
@@ -179,17 +143,10 @@ public class GuildSettingsUtils {
      */
     public static void deleteGuild(Guild g) {
         AirUtils.guildSettings.remove(g.getId());
-        AirUtils.MONGO_ASYNC_CLIENT.startSession((session, sessionException) -> {
-            if (sessionException != null) {
-                logger.error("Aborting! Sessions are denied by the database.", sessionException);
-                return;
-            }
 
             MongoCollection<GuildSettings> settingsCollection = AirUtils.MONGO_ASYNC_GUILDSETTINGS;
-            settingsCollection.deleteOne(session, new Document("guildId", g.getIdLong()), (SingleResultCallback<DeleteResult>) DEFAULT_OBJECT_CALLBACK);
+            settingsCollection.deleteOne(new Document("guildId", g.getIdLong()), (SingleResultCallback<DeleteResult>) DEFAULT_OBJECT_CALLBACK);
 
-            session.close();
-        });
     }
 
     private static String replaceNewLines(String entery) {

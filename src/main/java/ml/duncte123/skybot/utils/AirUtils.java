@@ -51,6 +51,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 @SuppressWarnings({"ReturnInsideFinallyBlock", "WeakerAccess", "unused", "deprecation"})
@@ -78,6 +79,7 @@ public class AirUtils {
                             .eventLoopGroup(eventLoopGroup).build())
                     .applyToSslSettings(builder -> builder.enabled(true))
                     .applyConnectionString(CONNECTION_STRING)
+                    .applyToSocketSettings(builder -> builder.keepAlive(true).readTimeout(2, TimeUnit.MINUTES).connectTimeout(2, TimeUnit.MINUTES))
                     .build()
     );
     public static final MongoDatabase MONGO_ASYNC_DATABASE = MONGO_ASYNC_CLIENT.getDatabase(CONFIG.getString("mongo.database"));
