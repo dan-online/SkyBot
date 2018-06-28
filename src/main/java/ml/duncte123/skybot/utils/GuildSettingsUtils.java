@@ -18,44 +18,26 @@
 
 package ml.duncte123.skybot.utils;
 
-import com.mongodb.MongoCommandException;
-import com.mongodb.async.SingleResultCallback;
-import com.mongodb.async.client.MongoCollection;
-import com.mongodb.client.result.DeleteResult;
+import com.mongodb.Block;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.model.InsertOneOptions;
 import ml.duncte123.skybot.objects.api.GuildSettings;
+import ml.duncte123.skybot.objects.api.GuildSettingsCodecImpl;
 import net.dv8tion.jda.core.entities.Guild;
 import org.bson.Document;
+import org.bson.codecs.configuration.CodecRegistries;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 
+import static ml.duncte123.skybot.utils.AirUtils.CONFIG;
+import static ml.duncte123.skybot.utils.AirUtils.MONGO_CLIENT;
+
 @SuppressWarnings({"SqlDialectInspection", "SqlNoDataSourceInspection"})
 public class GuildSettingsUtils {
 
     private static final Logger logger = LoggerFactory.getLogger(GuildSettingsUtils.class);
-    public static final SingleResultCallback<Void> DEFAULT_VOID_CALLBACK = (aVoid, exception) -> {
-        if (exception!= null) {
-            if (exception instanceof MongoCommandException) {
-                MongoCommandException mongoCommandException = (MongoCommandException) exception;
-                if (mongoCommandException.getErrorCode() != 8000) {
-                    mongoCommandException.printStackTrace();
-                }
-            } else {
-                exception.printStackTrace();
-            }
-        }
-        else
-            logger.info("DB statement performed.");
-    };
-    public static final SingleResultCallback<?> DEFAULT_OBJECT_CALLBACK = (object, exception) -> {
-        if (exception!= null)
-            exception.printStackTrace();
-        else if (object != null)
-            logger.info(String.format("DB statement performed with result %s.", object.toString()));
-        else
-            logger.info("DB statement performed without any result.");
-    };
 
     /**
      * This runs both {@link #loadGuildSettings()} and {@link #loadFooterQuotes()}
@@ -72,8 +54,8 @@ public class GuildSettingsUtils {
         if (!AirUtils.NONE_SQLITE) return;
         logger.debug("Loading footer quotes");
 
-        AirUtils.MONGO_ASYNC_QUOTES.find()
-                .forEach((quote) -> EmbedUtils.footerQuotes.put(quote.getString("quote"), quote.getString("name")), DEFAULT_VOID_CALLBACK);
+        MONGO_CLIENT.getDatabase(CONFIG.getString("mongo.database")).getCollection("footerquotes").find()
+                .forEach((Block<? super Document>) (quote) -> EmbedUtils.footerQuotes.put(quote.getString("quote"), quote.getString("name")));
     }
 
     /**
@@ -82,8 +64,9 @@ public class GuildSettingsUtils {
     private static void loadGuildSettings() {
         logger.debug("Loading Guild settings.");
 
-        AirUtils.MONGO_ASYNC_GUILDSETTINGS.find()
-                .forEach((guildSetting) -> AirUtils.guildSettings.put(guildSetting.getGuildId(), guildSetting), DEFAULT_VOID_CALLBACK);
+        MONGO_CLIENT.getDatabase(CONFIG.getString("mongo.database")).getCollection("guildsettings", GuildSettings.class)
+                .withCodecRegistry(CodecRegistries.fromCodecs(new GuildSettingsCodecImpl())).find()
+                .forEach((Block<? super GuildSettings>)(guildSetting) -> AirUtils.guildSettings.put(guildSetting.getGuildId(), guildSetting));
     }
 
     /**
@@ -94,11 +77,11 @@ public class GuildSettingsUtils {
      */
     public static GuildSettings getGuild(Guild guild) {
 
-        if (!AirUtils.guildSettings.containsKey(guild.getId())) {
+        if (!AirUtils.guildSettings.containsKey(guild.getIdLong())) {
             return registerNewGuild(guild);
         }
 
-        return AirUtils.guildSettings.get(guild.getId());
+        return AirUtils.guildSettings.get(guild.getIdLong());
 
     }
 
@@ -113,9 +96,10 @@ public class GuildSettingsUtils {
             registerNewGuild(guild);
             return;
         }
-        MongoCollection<GuildSettings> settingsCollection = AirUtils.MONGO_ASYNC_GUILDSETTINGS;
-        settingsCollection.deleteOne(new Document("guildId", guild.getIdLong()), (SingleResultCallback<DeleteResult>) DEFAULT_OBJECT_CALLBACK);
-        settingsCollection.insertOne(settings, DEFAULT_VOID_CALLBACK);
+        MongoCollection<GuildSettings> settingsCollection = MONGO_CLIENT.getDatabase(CONFIG.getString("mongo.database"))
+                .getCollection("guildsettings", GuildSettings.class).withCodecRegistry(CodecRegistries.fromCodecs(new GuildSettingsCodecImpl()));
+        settingsCollection.deleteOne(new Document("guildId", guild.getIdLong()));
+        settingsCollection.insertOne(settings);
     }
 
     /**
@@ -130,8 +114,10 @@ public class GuildSettingsUtils {
         }
         GuildSettings newGuildSettings = new GuildSettings(g.getIdLong());
 
-        MongoCollection<GuildSettings> settingsCollection = AirUtils.MONGO_ASYNC_GUILDSETTINGS;
-        settingsCollection.insertOne(newGuildSettings, DEFAULT_VOID_CALLBACK);
+        MongoCollection<GuildSettings> settingsCollection = MONGO_CLIENT.getDatabase(CONFIG.getString("mongo.database"))
+                .getCollection("guildsettings", GuildSettings.class)
+                .withCodecRegistry(CodecRegistries.fromCodecs(new GuildSettingsCodecImpl()));
+        settingsCollection.insertOne(newGuildSettings, new InsertOneOptions().bypassDocumentValidation(true));
 
         return newGuildSettings;
     }
@@ -142,10 +128,12 @@ public class GuildSettingsUtils {
      * @param g the guild to remove from the database
      */
     public static void deleteGuild(Guild g) {
-        AirUtils.guildSettings.remove(g.getId());
+        AirUtils.guildSettings.remove(g.getIdLong());
 
-            MongoCollection<GuildSettings> settingsCollection = AirUtils.MONGO_ASYNC_GUILDSETTINGS;
-            settingsCollection.deleteOne(new Document("guildId", g.getIdLong()), (SingleResultCallback<DeleteResult>) DEFAULT_OBJECT_CALLBACK);
+        MongoCollection<GuildSettings> settingsCollection = MONGO_CLIENT.getDatabase(CONFIG.getString("mongo.database")).getCollection("guildsettings", GuildSettings
+                .class)
+                .withCodecRegistry(CodecRegistries.fromCodecs(new GuildSettingsCodecImpl()));
+        settingsCollection.deleteOne(new Document("guildId", g.getIdLong()));
 
     }
 

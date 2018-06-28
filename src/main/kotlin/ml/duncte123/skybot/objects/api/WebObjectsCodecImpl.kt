@@ -27,7 +27,6 @@ import org.bson.codecs.EncoderContext
 import java.time.OffsetDateTime
 import java.util.*
 import kotlin.reflect.KProperty1
-import kotlin.reflect.KVisibility
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.javaField
 
@@ -45,16 +44,14 @@ open class DBObjectCodecImpl<T>(private val clazz: Class<T>, private val obj: DB
     override fun encode(writer: BsonWriter, value: T, encoderContext: EncoderContext) {
         writer.writeStartDocument()
         this::class.memberProperties.forEach {
-            if (it.visibility == KVisibility.PUBLIC) {
-                val itsValue = it.getter.call(this)
-                when (itsValue) {
-                    is String -> writer.writeString(it.name, itsValue)
-                    is Long -> writer.writeInt64(it.name, itsValue)
-                    is Int -> writer.writeInt32(it.name, itsValue)
-                    is Boolean -> writer.writeBoolean(it.name, itsValue)
-                    is Double -> writer.writeDouble(it.name, itsValue)
-                    is OffsetDateTime -> writer.writeDateTime(it.name, itsValue.toEpochSecond())
-                }
+            val itsValue = it.getter.call(this)
+            when (itsValue) {
+                is String -> writer.writeString(it.name, itsValue)
+                is Long -> writer.writeInt64(it.name, itsValue)
+                is Int -> writer.writeInt32(it.name, itsValue)
+                is Boolean -> writer.writeBoolean(it.name, itsValue)
+                is Double -> writer.writeDouble(it.name, itsValue)
+                is OffsetDateTime -> writer.writeDateTime(it.name, itsValue.toEpochSecond())
             }
         }
         writer.writeEndDocument()

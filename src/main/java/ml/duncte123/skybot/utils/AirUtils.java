@@ -20,7 +20,9 @@ package ml.duncte123.skybot.utils;
 
 import com.github.natanbc.reliqua.request.PendingRequest;
 import com.mongodb.ConnectionString;
-import com.mongodb.async.client.*;
+import com.mongodb.MongoClientSettings;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
 import com.mongodb.connection.netty.NettyStreamFactoryFactory;
 import com.wolfram.alpha.WAEngine;
 import io.netty.channel.EventLoopGroup;
@@ -32,17 +34,13 @@ import me.duncte123.weebJava.models.WeebApi;
 import me.duncte123.weebJava.types.TokenType;
 import ml.duncte123.skybot.CommandManager;
 import ml.duncte123.skybot.Settings;
-import ml.duncte123.skybot.objects.api.*;
-import ml.duncte123.skybot.objects.command.custom.CustomCommand;
-import ml.duncte123.skybot.objects.command.custom.CustomCommandCodecImpl;
+import ml.duncte123.skybot.objects.api.GuildSettings;
 import ml.duncte123.skybot.objects.discord.user.Profile;
 import ml.duncte123.skybot.web.WebServer;
 import net.dv8tion.jda.core.OnlineStatus;
 import net.dv8tion.jda.core.entities.Game;
 import net.dv8tion.jda.core.entities.Guild;
 import net.dv8tion.jda.core.entities.TextChannel;
-import org.bson.Document;
-import org.bson.codecs.configuration.CodecRegistries;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,35 +63,25 @@ public class AirUtils {
     //Generic MongoDB
 
     public static final ConnectionString CONNECTION_STRING = new ConnectionString(
-            String.format("mongodb%s://%s:%s@%s/?streamType=netty&ssl=true",
+            String.format("mongodb%s://%s:%s@%s/admin",
                             (CONFIG.getBoolean("mongo.use_srv")) ? "+srv" : "",
             CONFIG.getString("mongo.username"),
             CONFIG.getString("mongo.password"),
             CONFIG.getString("mongo.host")));
 
     // Async MongoDB
-    public static final EventLoopGroup eventLoopGroup = new NioEventLoopGroup(4, runnable -> new Thread(runnable, "MongoDB EventLoopGroup"));
-    public static final MongoClient MONGO_ASYNC_CLIENT = MongoClients.create(
+    public static final EventLoopGroup eventLoopGroup = new NioEventLoopGroup(0, runnable -> new Thread(runnable, "MongoDB EventLoopGroup"));
+    public static final MongoClient MONGO_CLIENT = MongoClients.create(
             MongoClientSettings.builder()
                     .streamFactoryFactory(NettyStreamFactoryFactory.builder()
                             .eventLoopGroup(eventLoopGroup).build())
                     .applyToSslSettings(builder -> builder.enabled(true))
                     .applyConnectionString(CONNECTION_STRING)
-                    .applyToSocketSettings(builder -> builder.keepAlive(true).readTimeout(2, TimeUnit.MINUTES).connectTimeout(2, TimeUnit.MINUTES))
+                    .applyToSocketSettings(builder -> builder.readTimeout(20, TimeUnit.SECONDS)
+                            .connectTimeout(20, TimeUnit
+                            .SECONDS))
                     .build()
     );
-    public static final MongoDatabase MONGO_ASYNC_DATABASE = MONGO_ASYNC_CLIENT.getDatabase(CONFIG.getString("mongo.database"));
-    public static final MongoCollection<GuildSettings> MONGO_ASYNC_GUILDSETTINGS = MONGO_ASYNC_DATABASE.getCollection("guildsettings", GuildSettings
-            .class)
-            .withCodecRegistry(CodecRegistries.fromCodecs(new GuildSettingsCodecImpl()));
-    public static final MongoCollection<CustomCommand> MONGO_ASYNC_CUSTOMCOMMANDS = MONGO_ASYNC_DATABASE.getCollection("customcommands",
-            CustomCommand.class)
-            .withCodecRegistry(CodecRegistries.fromCodecs(new CustomCommandCodecImpl()));
-    public static final MongoCollection<BanObject> MONGO_ASYNC_BANS =  AirUtils.MONGO_ASYNC_DATABASE.getCollection("bans", BanObject.class)
-            .withCodecRegistry(CodecRegistries.fromCodecs(new BanObjectCodecImpl()));
-    public static final MongoCollection<Document> MONGO_ASYNC_QUOTES = MONGO_ASYNC_DATABASE.getCollection("footerquotes");
-    public static final MongoCollection<Warning> MONGO_ASYNC_WARNINGS =  AirUtils.MONGO_ASYNC_DATABASE.getCollection("warnings", Warning.class)
-            .withCodecRegistry(CodecRegistries.fromCodecs(new WarningCodecImpl()));
 
     public static final CommandManager COMMAND_MANAGER = new CommandManager();
     public static final WeebApi WEEB_API = new WeebApiBuilder(TokenType.WOLKETOKENS)
@@ -248,7 +236,8 @@ public class AirUtils {
      * Stops everything
      */
     public static void stop() {
-        MONGO_ASYNC_CLIENT.close();
+        MONGO_CLIENT.close();
+        eventLoopGroup.shutdownGracefully();
         try {
             AudioUtils.ins.musicManagers.forEach((a, b) -> {
                 if (b.player.getPlayingTrack() != null)

@@ -18,18 +18,20 @@
 
 package ml.duncte123.skybot;
 
+import com.mongodb.Block;
 import com.mongodb.client.model.Filters;
 import ml.duncte123.skybot.exceptions.VRCubeException;
 import ml.duncte123.skybot.objects.command.Command;
 import ml.duncte123.skybot.objects.command.CommandCategory;
 import ml.duncte123.skybot.objects.command.custom.CustomCommand;
+import ml.duncte123.skybot.objects.command.custom.CustomCommandCodecImpl;
 import ml.duncte123.skybot.unstable.utils.ComparatingUtils;
-import ml.duncte123.skybot.utils.AirUtils;
 import ml.duncte123.skybot.utils.GuildSettingsUtils;
 import ml.duncte123.skybot.utils.MessageUtils;
 import net.dv8tion.jda.core.entities.Message;
 import net.dv8tion.jda.core.events.message.guild.GuildMessageReceivedEvent;
 import org.bson.Document;
+import org.bson.codecs.configuration.CodecRegistries;
 import org.reflections.Reflections;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +40,9 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import static ml.duncte123.skybot.utils.AirUtils.CONFIG;
+import static ml.duncte123.skybot.utils.AirUtils.MONGO_CLIENT;
 
 @SuppressWarnings("WeakerAccess")
 public class CommandManager {
@@ -131,7 +136,7 @@ public class CommandManager {
 
         if (commandFound || limitReached) {
             if (message != null)
-            MessageUtils.sendErrorWithMessage(message, "Either the command was already added, limit reached or an database " +
+                MessageUtils.sendErrorWithMessage(message, "Either the command was already added, limit reached or an database " +
                     "error appeared.\n" +
                     "Try to contact the developers if you spot an database error.");
         }
@@ -139,42 +144,27 @@ public class CommandManager {
 
         if (insertInDb) {
             if (isEdit) {
-                AirUtils.MONGO_ASYNC_CUSTOMCOMMANDS.updateOne(
+                MONGO_CLIENT.getDatabase(CONFIG.getString("mongo.database")).getCollection("customcommands",
+            CustomCommand.class)
+            .withCodecRegistry(CodecRegistries.fromCodecs(new CustomCommandCodecImpl())).updateOne(
                     Filters.and(
                             Filters.eq("invoke", command.getName()),
                             Filters.eq("guildId", Long.parseLong(command.getGuildId()))),
-                    new Document("message", command.getMessage()),
-                    (result, exception) -> {
-                        if (exception != null) {
-                            if (message != null)
-                            MessageUtils.sendErrorWithMessage(message, "Either the command was removed or an database error appeared.\n" +
-                                    "Try to contact the developers if you spot an database error.");
-                            exception.printStackTrace();
-                        }
-                        if (result != null) {
-                            this.customCommands.remove(getCustomCommand(command.getName(), command.getGuildId()));
-                            this.customCommands.add(command);
-                            if (message != null)
-                            MessageUtils.sendSuccess(message);
-                        }
-                });
+                    new Document("message", command.getMessage()));
+                this.customCommands.remove(getCustomCommand(command.getName(), command.getGuildId()));
+                this.customCommands.add(command);
+                if (message != null)
+                    MessageUtils.sendSuccess(message);
             } else {
-                AirUtils.MONGO_ASYNC_CUSTOMCOMMANDS.insertOne(command,
-                    (result, exception) -> {
-                        if (exception != null) {
-                            if (message != null)
-                            MessageUtils.sendErrorWithMessage(message, "Either the command was already added, limit reached or an database " +
-                                    "error appeared.\n" +
-                                    "Try to contact the developers if you spot an database error.");
-                            exception.printStackTrace();
-                        }
-                        if (result != null) {
-                            this.customCommands.add(command);
-                            if (message != null)
-                            MessageUtils.sendSuccess(message);
-                        }
-                });
+                MONGO_CLIENT.getDatabase(CONFIG.getString("mongo.database")).getCollection("customcommands",
+            CustomCommand.class)
+            .withCodecRegistry(CodecRegistries.fromCodecs(new CustomCommandCodecImpl())).insertOne(command);
+                this.customCommands.add(command);
+                if (message != null)
+                    MessageUtils.sendSuccess(message);
             }
+        } else {
+            this.customCommands.add(command);
         }
     }
 
@@ -195,18 +185,12 @@ public class CommandManager {
             MessageUtils.sendErrorWithMessage(message, String.format("The command with name %s does not exist here!", name));
         }
 
-        AirUtils.MONGO_ASYNC_CUSTOMCOMMANDS.deleteOne(Filters.and(Filters.eq("invoke", name), Filters.eq("guildId", Long.parseLong
-                (guildId))), (result, exception) -> {
-            if (exception != null) {
-                MessageUtils.sendErrorWithMessage(message, "Either the command was removed or an database error appeared.\n" +
-                        "Try to contact the developers if you spot an database error.");
-                exception.printStackTrace();
-            }
-            if (result != null) {
-                this.customCommands.remove(cmd);
-                MessageUtils.sendSuccess(message);
-            }
-        });
+        MONGO_CLIENT.getDatabase(CONFIG.getString("mongo.database")).getCollection("customcommands",
+            CustomCommand.class)
+            .withCodecRegistry(CodecRegistries.fromCodecs(new CustomCommandCodecImpl())).deleteOne(Filters.and(Filters.eq("invoke", name),
+                Filters.eq("guildId", Long.parseLong(guildId))));
+        this.customCommands.remove(cmd);
+        MessageUtils.sendSuccess(message);
     }
 
     /**
@@ -282,7 +266,9 @@ public class CommandManager {
     }
 
     private void loadCustomCommands() {
-        AirUtils.MONGO_ASYNC_CUSTOMCOMMANDS.find()
-                .forEach((command) -> addCustomCommand(null, command, false, false), GuildSettingsUtils.DEFAULT_VOID_CALLBACK);
+        MONGO_CLIENT.getDatabase(CONFIG.getString("mongo.database")).getCollection("customcommands",
+            CustomCommand.class)
+            .withCodecRegistry(CodecRegistries.fromCodecs(new CustomCommandCodecImpl())).find()
+                .forEach((Block<? super CustomCommand>)(command) -> addCustomCommand(null, command, false, false));
     }
 }

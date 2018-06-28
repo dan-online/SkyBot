@@ -18,21 +18,25 @@
 
 package ml.duncte123.skybot.utils;
 
+import com.mongodb.Block;
 import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.InsertOneOptions;
+import com.mongodb.client.result.DeleteResult;
 import ml.duncte123.skybot.objects.ConsoleUser;
 import ml.duncte123.skybot.objects.FakeUser;
-import ml.duncte123.skybot.objects.api.BanObject;
-import ml.duncte123.skybot.objects.api.GuildSettings;
-import ml.duncte123.skybot.objects.api.Warning;
+import ml.duncte123.skybot.objects.api.*;
 import net.dv8tion.jda.bot.sharding.ShardManager;
 import net.dv8tion.jda.core.JDA;
 import net.dv8tion.jda.core.Permission;
 import net.dv8tion.jda.core.entities.*;
+import org.bson.codecs.configuration.CodecRegistries;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.OffsetDateTime;
 import java.util.concurrent.TimeUnit;
+
+import static ml.duncte123.skybot.utils.AirUtils.CONFIG;
 
 public class ModerationUtils {
 
@@ -104,8 +108,10 @@ public class ModerationUtils {
      * @param guildId           What guild the user got banned in
      */
     public static void addBannedUserToDb(long modID, String userName, String userDiscriminator, long userId, OffsetDateTime unbanDate, long guildId) {
-        AirUtils.MONGO_ASYNC_BANS.insertOne(new BanObject(OffsetDateTime.now(), unbanDate, userName, modID, userId, guildId,
-                userDiscriminator), GuildSettingsUtils.DEFAULT_VOID_CALLBACK);
+        AirUtils.MONGO_CLIENT.getDatabase(CONFIG.getString("mongo.database")).getCollection("bans", BanObject.class)
+                .withCodecRegistry(CodecRegistries.fromCodecs(new BanObjectCodecImpl()))
+                .insertOne(new BanObject(OffsetDateTime.now(), unbanDate, userName, modID, userId, guildId, userDiscriminator),
+                new InsertOneOptions().bypassDocumentValidation(true));
     }
 
     /**
@@ -132,8 +138,10 @@ public class ModerationUtils {
     public static void addWarningToDb(User moderator, User target, String reason, Guild guild, JDA jda) {
             OffsetDateTime now = OffsetDateTime.now();
 
-            AirUtils.MONGO_ASYNC_WARNINGS.insertOne(new Warning(reason, now, moderator.getIdLong(), now.plusDays(3), target.getIdLong(),
-                    guild.getIdLong()), GuildSettingsUtils.DEFAULT_VOID_CALLBACK);
+        AirUtils.MONGO_CLIENT.getDatabase(CONFIG.getString("mongo.database")).getCollection("warnings", Warning.class)
+                .withCodecRegistry(CodecRegistries.fromCodecs(new WarningCodecImpl()))
+                .insertOne(new Warning(reason, now, moderator.getIdLong(), now.plusDays(3), target.getIdLong(),
+                    guild.getIdLong()), new InsertOneOptions().bypassDocumentValidation(true));
     }
 
     /**
@@ -142,7 +150,9 @@ public class ModerationUtils {
      * @param shardManager the current shard manager for this bot
      */
     public static void checkUnbans(ShardManager shardManager) {
-        AirUtils.MONGO_ASYNC_BANS.find(Filters.lt("unban_date", OffsetDateTime.now().toEpochSecond())).forEach((ban) -> {
+        AirUtils.MONGO_CLIENT.getDatabase(CONFIG.getString("mongo.database")).getCollection("bans", BanObject.class)
+                .withCodecRegistry(CodecRegistries.fromCodecs(new BanObjectCodecImpl()))
+                .find(Filters.lt("unban_date", OffsetDateTime.now().toEpochSecond())).forEach((Block<? super BanObject>) (ban) -> {
             logger.debug("Unbanning {}", ban.getUsername());
             Guild guild = shardManager.getGuildById(ban.getGuildId());
             if (guild != null) {
@@ -150,14 +160,10 @@ public class ModerationUtils {
                 guild.getController().unban(userId).queue();
                 modLog(new ConsoleUser(), new FakeUser(ban.getUsername(), userId, ban.getDiscriminator()), "unbanned", guild);
             }
-        }, GuildSettingsUtils.DEFAULT_VOID_CALLBACK);
-        AirUtils.MONGO_ASYNC_BANS.deleteMany(Filters.lt("unban_date", OffsetDateTime.now().toEpochSecond()), ((result, t) -> {
-            if (t != null) {
-                t.printStackTrace();
-            }
-            if (result != null)
+        });
+        DeleteResult result = AirUtils.MONGO_CLIENT.getDatabase(CONFIG.getString("mongo.database")).getCollection("bans", BanObject.class)
+                .withCodecRegistry(CodecRegistries.fromCodecs(new BanObjectCodecImpl())).deleteMany(Filters.lt("unban_date", OffsetDateTime.now().toEpochSecond()));
                 logger.debug("Checking done, unbanned {} users.", result.getDeletedCount());
-        }));
     }
 
     public static void muteUser(Guild guild, Member member, TextChannel channel, String cause, long minutesUntilUnMute) {
