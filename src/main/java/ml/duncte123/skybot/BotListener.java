@@ -312,7 +312,7 @@ public class BotListener extends ListenerAdapter {
         for (final Role role : event.getRoles()) {
             final long roleId = role.getIdLong();
 
-            if (!(roleId == Command.patronsRole || roleId == Command.guildPatronsRole || roleId == Command.oneGuildPatronsRole)) {
+            if (roleId != Command.patronsRole && roleId != Command.guildPatronsRole && roleId != Command.oneGuildPatronsRole) {
                 continue;
             }
 
