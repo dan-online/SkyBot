@@ -46,6 +46,8 @@ public class ShardWatcher {
 
         final ShardManager shardManager = SkyBot.getInstance().getShardManager();
 
+        logger.info("Checking shards");
+
         for (final JDA shard : shardManager.getShardCache()) {
             final ShardInfo info = shard.getShardInfo();
             final long ping = shard.getPing();
@@ -54,13 +56,10 @@ public class ShardWatcher {
             if (oldPing != ping) {
                 this.pings[info.getShardId()] = ping;
             } else {
-                //
+                logger.error("{} is possibly down", info);
             }
-
         }
 
-
+        logger.info("Checking done");
     }
-
-
 }
