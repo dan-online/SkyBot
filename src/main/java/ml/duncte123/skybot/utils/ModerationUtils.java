@@ -169,7 +169,9 @@ public class ModerationUtils {
     /**
      * This will check if there are users that can be unbanned
      */
-    public static void checkUnbans(Variables variables) {
+    public static void checkUnbans() {
+        final Variables variables = Variables.getInstance();
+
         variables.getDatabaseAdapter().getExpiredBans(
             (bans) -> {
                 logger.debug("Checking for users to unban");

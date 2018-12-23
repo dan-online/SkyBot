@@ -31,9 +31,10 @@ import org.slf4j.LoggerFactory
 import java.util.stream.Collectors
 
 @Author(nickname = "Sanduhr32", author = "Maurice R S")
-class SpamFilter(private val variables: Variables) : TLongObjectHashMap<SpamCache>() {
+class SpamFilter : TLongObjectHashMap<SpamCache>() {
 
     private lateinit var rates: TLongList
+    private val variables = Variables.getInstance()
     private val adapter = variables.databaseAdapter
 
     @Throws(IllegalArgumentException::class)
